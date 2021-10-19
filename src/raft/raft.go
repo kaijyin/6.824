@@ -1,4 +1,23 @@
 package raft
+
+
+
+//this is an outline of the API that raft must expose to
+//the service (or tester). see comments below for
+//each of these functions for more details.
+//
+//rf = Make(...)
+//  create a new Raft server.
+//rf.Start(command interface{}) (index, term, isleader)
+//  start agreement on a new log entry
+//rf.GetState() (term, isLeader)
+//  ask a Raft for its current term, and whether it thinks it is leader
+//ApplyMsg
+//  each time a new entry is committed to the log, each Raft peer
+//  should send an ApplyMsg to the service (or tester)
+//  in the same server.
+
+
 import (
 	"bytes"
 	//"labgob"
@@ -13,6 +32,16 @@ import (
 )
 
 
+//
+//as each Raft peer becomes aware that successive log entries are
+//committed, the peer should send an ApplyMsg to the service (or
+//tester) on the same server, via the applyCh passed to Make(). set
+//CommandValid to true to indicate that the ApplyMsg contains a newly
+//committed log entry.
+
+//in part 2D you'll want to send other kinds of messages (e.g.,
+//snapshots) on the applyCh, but set CommandValid to false for these
+//other uses.
 
 type ApplyMsg struct {
 	CommandValid bool
@@ -25,6 +54,10 @@ type ApplyMsg struct {
 	SnapshotTerm  int
 	SnapshotIndex int
 }
+
+//
+// A Go object implementing a single Raft peer.
+//
 
 const(
 	Flower int=1
@@ -43,18 +76,21 @@ type Log_ struct {
 }
 
 type Raft struct {
-	mu        sync.Mutex        
-	peers     []*labrpc.ClientEnd 
-	persister *Persister       
-	me        int                
-	dead      int32            
+	mu        sync.Mutex          // Lock to protect shared access to this peer's state
+	peers     []*labrpc.ClientEnd // RPC end points of all peers
+	persister *Persister          // Object to hold this peer's persisted state
+	me        int                 // this peer's index into peers[]
+	dead      int32               // set by Kill()
 
+	// Your data here (2A, 2B, 2C).
+	// Look at the paper's Figure 2 for a description of what
+	// state a Raft server must maintain.
 	applyCh chan ApplyMsg
-    logs    []Log_
+	logs    []Log_
 	logLen  int
-    voteFor int
+	voteFor int
 	votes   int
-    term          int
+	term          int
 	electionTimer *time.Timer
 	heartbeatTimer *time.Timer
 
@@ -67,17 +103,25 @@ type Raft struct {
 	match_  []int
 }
 
-
+// return currentTerm and whether this server
+// believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
 
 	// Your code here (2A).
-    rf.mu.Lock();
+	rf.mu.Lock();
 	defer rf.mu.Unlock()
 	return rf.term, rf.statu_==Leader
 }
 
-
+//
+// save Raft's persistent state to stable storage,
+// where it can later be retrieved after a crash and restart.
+// see paper's Figure 2 for a description of what should be persistent.
+//
 func (rf *Raft) persist() {
+	// Your code here (2C).
+	// Example:
+	//DPrintf("%d:encode",rf.me)
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
 	e.Encode(rf.logs)
@@ -88,11 +132,15 @@ func (rf *Raft) persist() {
 }
 
 
-
+//
+// restore previously persisted state.
+//
 func (rf *Raft) readPersist(data []byte) {
-	if data == nil || len(data) < 1 { 
+	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
 	}
+	// Your code here (2C).
+	// Example:
 	r := bytes.NewBuffer(data)
 	d := labgob.NewDecoder(r)
 	var  logs []Log_
@@ -105,41 +153,85 @@ func (rf *Raft) readPersist(data []byte) {
 	d.Decode(&term)
 	rf.term =term
 	rf.logLen=len(rf.logs)-1
+	//DPrintf("%d:decode loglen:%d term:%d votefor:%d ",rf.me,rf.logLen,rf.term,rf.voteFor)
 }
 
 
-
+//
+// A service wants to switch to snapshot.  Only do so if Raft hasn't
+// have more recent info since it communicate the snapshot on applyCh.
+//
 func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int, snapshot []byte) bool {
+
+	// Your code here (2D).
 
 	return true
 }
 
-
+// the service says it has created a snapshot that has
+// all info up to and including index. this means the
+// service no longer needs the log through (and including)
+// that index. Raft should now trim its log as much as possible.
 func (rf *Raft) Snapshot(index int, snapshot []byte) {
+	// Your code here (2D).
 
 }
 
 
-
+//
+// example RequestVote RPC arguments structure.
+// field names must start with capital letters!
+//
 type RequestVoteArgs struct {
 	Term         int
 	CandidateId  int
 	LastLogIndex int
 	LastLogTerm  int
+	// Your data here (2A, 2B).
 }
 
-
+//
+// example RequestVote RPC reply structure.
+// field names must start with capital letters!
+//
 type RequestVoteReply struct {
-
+	// Your data here (2A).
 	Term        int
 	VoteGranted int
 }
 
 
+//example code to send a RequestVote RPC to a server.
+//server is the index of the target server in rf.peers[].
+//expects RPC arguments in args.
+//fills in *reply with RPC reply, so caller should
+//pass &reply.
+//the types of the args and reply passed to Call() must be
+//the same as the types of the arguments declared in the
+//handler function (including whether they are pointers).
+//
+//The labrpc package simulates a lossy network, in which servers
+//may be unreachable, and in which requests and replies may be lost.
+//Call() sends a request and waits for a reply. If a reply arrives
+//within a timeout interval, Call() returns true; otherwise
+//Call() returns false. Thus Call() may not return for a while.
+//A false return can be caused by a dead server, a live server that
+//can't be reached, a lost request, or a lost reply.
+//
+//Call() is guaranteed to return (perhaps after a delay) *except* if the
+//handler function on the server side does not return.  Thus there
+//is no need to implement your own timeouts around Call().
+//
+//look at the comments in ../labrpc/labrpc.go for more details.
+//
+//if you're having trouble getting RPC to work, check that you've
+//capitalized all field names in structs passed over RPC, and
+//that the caller passes the address of the reply struct with &, not
+//the struct itself.
 type ApendArgs struct {
 	Term int
 	LeaderId int
-    PrevLogIdx int
+	PrevLogIdx int
 	PrevLogTerm int
 	Entries  []Log_
 	LeaderCommit int
@@ -152,7 +244,7 @@ type ApendReply struct {
 
 /*
 添加日志,做持久化,发送消息
- */
+*/
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	rf.lock()
 	if rf.killed()||rf.statu_!=Leader{
@@ -170,9 +262,9 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 }
 func (rf *Raft) sendMsg(heartbeat bool)  {
 	rf.lock()
-    if rf.killed()||rf.statu_!=Leader{
-    	rf.unlock()
-    	return
+	if rf.killed()||rf.statu_!=Leader{
+		rf.unlock()
+		return
 	}
 	if !heartbeat{//不是心跳的话,就刷新心跳超时时间,减少RPC数目
 		rf.flashHertbeat()
@@ -376,8 +468,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	rf.lock()
 	defer rf.unlock()
 	reply.VoteGranted =0
-    last_idx:=rf.logLen
-    last_term:=rf.logs[rf.logLen].Term_
+	last_idx:=rf.logLen
+	last_term:=rf.logs[rf.logLen].Term_
 	if rf.killed()||args.Term <rf.term {
 		reply.Term =rf.term
 		return
@@ -468,7 +560,7 @@ func (rf *Raft) BeLeader()  {
 }
 func (rf *Raft) heartTiker()  {
 	//选举结束立刻发送心跳
-    rf.heartbeatTimer=time.NewTimer(time.Duration(0))
+	rf.heartbeatTimer=time.NewTimer(time.Duration(0))
 	for !rf.killed(){
 		//DPrintf("%d开始发送心跳",rf.me)
 		<-rf.heartbeatTimer.C
@@ -500,22 +592,22 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.peers = peers
 	rf.persister = persister
 	rf.me = me
-    rf.applyCh=applyCh
+	rf.applyCh=applyCh
 
 	// Your initialization code here (2A, 2B, 2C).
-    rf.dead=0
-    rf.statu_=Flower
+	rf.dead=0
+	rf.statu_=Flower
 	rf.voteFor =-1
-    rf.term =0
-    rf.peerCount=len(rf.peers)
-    //根据论文指示,把初始下标设置为1,提前增添一个空的log,确实会方便狠多
-    rf.logs =make([]Log_,1)
-    rf.logs[0]=Log_{0,0}
-    rf.commit=0
-    rf.logLen =0
-    rf.applied=0
-    rf.next_=make([]int,rf.peerCount)
-    rf.match_=make([]int,rf.peerCount)
+	rf.term =0
+	rf.peerCount=len(rf.peers)
+	//根据论文指示,把初始下标设置为1,提前增添一个空的log,确实会方便狠多
+	rf.logs =make([]Log_,1)
+	rf.logs[0]=Log_{0,0}
+	rf.commit=0
+	rf.logLen =0
+	rf.applied=0
+	rf.next_=make([]int,rf.peerCount)
+	rf.match_=make([]int,rf.peerCount)
 	rand.Seed(time.Now().UnixNano())
 
 	// initialize from state persisted before a crash
@@ -523,7 +615,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 
 	// start ticker goroutine to start elections
 	go rf.ticker()
-    //DPrintf("初始化结束")
+	//DPrintf("初始化结束")
 
 	return rf
 }
