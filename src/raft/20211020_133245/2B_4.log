@@ -1,0 +1,11 @@
+# 6.824/raft [6.824/raft.test]
+.\config.go:44:15: undefined: Raft
+.\config.go:75:22: undefined: Raft
+.\config.go:136:39: undefined: ApplyMsg
+.\config.go:157:48: undefined: ApplyMsg
+.\config.go:181:52: undefined: ApplyMsg
+.\config.go:240:57: undefined: ApplyMsg
+.\config.go:271:23: undefined: ApplyMsg
+.\config.go:273:8: undefined: Make
+.\config.go:508:12: undefined: Raft
+FAIL	6.824/raft [build failed]

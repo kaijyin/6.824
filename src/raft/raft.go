@@ -68,7 +68,7 @@ const(
 const (
 	electionTimeoutTop int64= 300
 	elctionTimeoutDown int64= 200
-	hertbeatInterval int64 = 50
+	hertbeatInterval int64 = 80
 )
 type Log_ struct {
 	Comand interface{}
@@ -85,14 +85,13 @@ type Raft struct {
 	// Your data here (2A, 2B, 2C).
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
-	applyCh chan ApplyMsg
-	logs    []Log_
-	logLen  int
-	voteFor int
-	votes   int
-	term          int
-	electionTimer *time.Timer
-	heartbeatTimer *time.Timer
+	applyCh     chan ApplyMsg
+	logs        []Log_
+	logLen      int
+	voteFor     int
+	votes       int
+	term        int
+	lastReceive time.Time
 
 	commit  int
 	applied int
@@ -266,9 +265,6 @@ func (rf *Raft) sendMsg(heartbeat bool)  {
 		rf.unlock()
 		return
 	}
-	if !heartbeat{//不是心跳的话,就刷新心跳超时时间,减少RPC数目
-		rf.flashHertbeat()
-	}
 	rf.unlock()
 	//日志复制不需要等待,只需要在收到回复后统计结果就行,结果只对Leader自身的comit有影响
 	//而Leader选举就需要等待,因为需要统计结果,判断是否能成为Leader,保证一轮只有一个Leader
@@ -325,7 +321,8 @@ func (rf *Raft) Apendence(args *ApendArgs,reply *ApendReply)  {//reply的idx表�
 	previdx++
 	j:=0
 	//复制日志
-	for ;previdx<=rf.logLen &&j<len(args.Entries);{
+	lengh :=len(args.Entries)
+	for ;previdx<=rf.logLen &&j< lengh;{
 		if rf.logs[previdx].Term_!=args.Entries[j].Term_{
 			rf.logs = rf.logs[:previdx]
 			break
@@ -333,10 +330,10 @@ func (rf *Raft) Apendence(args *ApendArgs,reply *ApendReply)  {//reply的idx表�
 		previdx++
 		j++
 	}
-	for ;j<len(args.Entries);j++{
+	for ;j< lengh;j++{
 		rf.logs =append(rf.logs,args.Entries[j])
 	}
-	rf.logLen =len(rf.logs)-1
+	rf.logLen = len(rf.logs)-1
 	//日志更改,需要做持久化操作,持久化操作要在Leader收到reply并comit之前做,所以收到就处理是最合适的
 	rf.persist()
 	//提交日志
@@ -351,7 +348,7 @@ func (rf *Raft) Apendence(args *ApendArgs,reply *ApendReply)  {//reply的idx表�
 	//repley.idx=rf.len不对,可能Flower的日志比Leader的日志要长,但是前面确实吻合的,这是由于超时后重新选举造成的
 	//你可能会问,这不是不对嘛,投票的时候,不是更长的优先级更高吗,是啊,但是只要先进入选举,任期就更高,原本Leader收到请求,只能乖乖变为flower,虽然曾经的Leader不会投票给他
 	//但是只要收到过半的投票就行了呀
-	reply.Idx=args.PrevLogIdx+len(args.Entries)
+	reply.Idx=args.PrevLogIdx+ len(args.Entries)
 	reply.Term=rf.term
 }
 func (rf *Raft) recieveApendReplay(i int,reply *ApendReply){
@@ -402,29 +399,24 @@ func (rf *Raft) recieveApendReplay(i int,reply *ApendReply){
 	}
 }
 func (rf *Raft) sendApendence(server int,args *ApendArgs,reply *ApendReply)bool  {
+	//DPrintf("%d send appendecne to %d",rf.me,server)
 	ok := rf.peers[server].Call("Raft.Apendence", args, reply)
 	return ok
 }
 func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *RequestVoteReply) bool {
+	//DPrintf("%d send req to %d",rf.me,server)
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 	return ok
 }
 func (rf *Raft) getElectionTime() time.Duration  {//获取down-up的随机超时时间
 	i := rand.Int63()%(electionTimeoutTop-elctionTimeoutDown) + elctionTimeoutDown
-	return time.Duration(time.Millisecond*time.Duration(i))
-}
-func (rf *Raft) flashHertbeat()  {
-	if rf.heartbeatTimer !=nil{
-		rf.heartbeatTimer.Reset(time.Millisecond*time.Duration(hertbeatInterval))
-	}
+	//DPrintf("server %d election time :%d",rf.me,i)
+	return time.Millisecond*time.Duration(i)
 }
 func (rf *Raft) flashRpc()  {
-	if rf.electionTimer!=nil {	//预防掉线后收到flashRpc请求
-		rf.electionTimer.Reset(rf.getElectionTime())
-	}
+	rf.lastReceive=time.Now()
 }
 func (rf *Raft) lock()  {
-	//DPrintf("%d lock",rf.me)
 	rf.mu.Lock()
 }
 func (rf *Raft) unlock()  {
@@ -432,17 +424,19 @@ func (rf *Raft) unlock()  {
 	rf.mu.Unlock()
 }
 func (rf *Raft) election()  {
+	//DPrintf("%d开始选举",rf.me)
 	rf.lock()
 	if rf.killed() ||rf.statu_==Leader{
 		rf.unlock()
 		return
 	}
 	rf.BeCandidate()
+	electionTerm :=rf.term
 	request := RequestVoteArgs{rf.term, rf.me, rf.logLen, rf.logs[rf.logLen].Term_}
 	rf.unlock()
-	finish:=1
+	finish:=int64(1)
 	ok:=false
-	cond := sync.NewCond(&rf.mu)
+	cond := sync.NewCond(new(sync.Mutex))
 	for i:=0;i<rf.peerCount;i++{
 		if i==rf.me{
 			continue
@@ -450,26 +444,35 @@ func (rf *Raft) election()  {
 		reply := RequestVoteReply{-1,0}
 		go func(server int) {
 			send := rf.sendRequestVote(server, &request, &reply)
-			if send&&rf.reciveVoteReply(i,&reply){
+			if send&&rf.reciveVoteReply(&reply){
 				ok=true
 			}
-			finish++
+			atomic.AddInt64(&finish,1)
 			cond.Broadcast()
 		}(i)
 	}
-	rf.lock()
+	cond.L.Lock()
+	defer cond.L.Unlock()
 	//阻塞,等待收到所有人的回复,或者大部分人投票通过,或者RPC请求延迟,进入新的任期,收到其余服务器的RPC后状态改变后,停止阻塞
-	for  !rf.killed()&&!ok&&finish!=rf.peerCount&&rf.statu_==Candidate{
-		cond.Wait()
+	for  !rf.killed(){
+		rf.lock()
+		if !ok&&int(finish)!=rf.peerCount&&rf.term== electionTerm {
+			rf.unlock()
+			cond.Wait()
+		}else {
+			rf.unlock()
+			break
+		}
 	}
-	rf.unlock()
+	//DPrintf("%d election in %d finished",rf.me,electionTerm)
 }
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
+	//DPrintf("%d recive req from %d",rf.me,args.CandidateId)
 	rf.lock()
 	defer rf.unlock()
 	reply.VoteGranted =0
-	last_idx:=rf.logLen
-	last_term:=rf.logs[rf.logLen].Term_
+	lastIdx :=rf.logLen
+	lastTerm :=rf.logs[rf.logLen].Term_
 	if rf.killed()||args.Term <rf.term {
 		reply.Term =rf.term
 		return
@@ -486,11 +489,11 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	//可以进行投票,开始比较谁的日志更新
 	//最后的日志任期更大,说明已经接受到新Leader的日志复制,并成功
 	//如果相同,则长度越长,更可能当leader
-	if last_term>args.LastLogTerm {
+	if lastTerm >args.LastLogTerm {
 		reply.Term =rf.term
 		return
 	}
-	if last_term==args.LastLogTerm &&last_idx>args.LastLogIndex {
+	if lastTerm ==args.LastLogTerm && lastIdx >args.LastLogIndex {
 		reply.Term =rf.term
 		return
 	}
@@ -503,20 +506,20 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	//投票成功,持久化,不然可能出现一个人在一轮给两个人投票的情况
 	rf.persist()
 }
-func (rf *Raft) reciveVoteReply(i int,reply *RequestVoteReply) bool {
+func (rf *Raft) reciveVoteReply(reply *RequestVoteReply) bool {
 	rf.lock()
 	defer rf.unlock()
-	if rf.killed(){
+	if rf.killed()||rf.statu_!=Candidate{
 		return false
 	}
 	if reply.Term>rf.term {
 		rf.BeFlower(reply.Term)
 		return false
 	}
-	if reply.VoteGranted ==1{
+	if reply.Term==rf.term&&reply.VoteGranted ==1{
 		rf.votes++
 	}
-	if rf.votes>=(rf.peerCount+1)/2 && rf.statu_==Candidate {
+	if rf.votes>rf.peerCount/2{
 		rf.BeLeader()
 		return true
 	}
@@ -546,11 +549,10 @@ func (rf *Raft) BeCandidate()  {
 	rf.term++
 	//任期更改,持久化
 	rf.persist()
+	rf.flashRpc()
 }
 func (rf *Raft) BeLeader()  {
-	if rf.statu_!=Candidate{
-		return
-	}
+	//DPrintf("%d become leader",rf.me)
 	rf.statu_=Leader
 	for i:=0;i<rf.peerCount;i++{
 		rf.next_[i]=rf.commit+1
@@ -560,30 +562,29 @@ func (rf *Raft) BeLeader()  {
 }
 func (rf *Raft) heartTiker()  {
 	//选举结束立刻发送心跳
-	rf.heartbeatTimer=time.NewTimer(time.Duration(0))
 	for !rf.killed(){
-		//DPrintf("%d开始发送心跳",rf.me)
-		<-rf.heartbeatTimer.C
 		rf.lock()
-		if rf.killed()||rf.statu_!=Leader{
+		if rf.statu_!=Leader{
 			rf.unlock()
 			break
 		}
 		rf.unlock()
 		rf.sendMsg(true)
-		rf.flashHertbeat()
+		time.Sleep(time.Duration(hertbeatInterval))
 	}
 }
 func (rf *Raft) ticker() {
-
-	rf.electionTimer=time.NewTimer(rf.getElectionTime())
-	for rf.killed() == false {
-		<-rf.electionTimer.C
-		if rf.killed(){
-			break
-		}
-		rf.election()
+	for !rf.killed() {
 		rf.flashRpc()
+		timeOut:=rf.getElectionTime()
+		time.Sleep(timeOut)
+		rf.lock()
+		statu:=rf.statu_
+		last:=rf.lastReceive
+		rf.unlock()
+		if statu!=Leader&&time.Now().Sub(last).Milliseconds() >timeOut.Milliseconds(){
+			 go rf.election()
+		}
 	}
 }
 func Make(peers []*labrpc.ClientEnd, me int,
@@ -608,14 +609,13 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.applied=0
 	rf.next_=make([]int,rf.peerCount)
 	rf.match_=make([]int,rf.peerCount)
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(time.Now().Unix())
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
 	// start ticker goroutine to start elections
 	go rf.ticker()
-	//DPrintf("初始化结束")
 
 	return rf
 }
