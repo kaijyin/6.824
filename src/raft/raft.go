@@ -92,6 +92,7 @@ type Raft struct {
 	votes       int
 	term        int
 	lastReceive time.Time
+	timeOut     int64
 
 	commit  int
 	applied int
@@ -408,13 +409,15 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 	return ok
 }
-func (rf *Raft) getElectionTime() time.Duration  {//获取down-up的随机超时时间
+func (rf *Raft) getElectionTime() int64  {//获取down-up的随机超时时间
 	i := rand.Int63()%(electionTimeoutTop-elctionTimeoutDown) + elctionTimeoutDown
 	//DPrintf("server %d election time :%d",rf.me,i)
-	return time.Millisecond*time.Duration(i)
+	return i
 }
 func (rf *Raft) flashRpc()  {
 	rf.lastReceive=time.Now()
+	rf.timeOut=rf.getElectionTime()
+
 }
 func (rf *Raft) lock()  {
 	rf.mu.Lock()
@@ -570,20 +573,24 @@ func (rf *Raft) heartTiker()  {
 		}
 		rf.unlock()
 		rf.sendMsg(true)
-		time.Sleep(time.Duration(hertbeatInterval))
+		time.Sleep(time.Duration(hertbeatInterval)*time.Millisecond)
 	}
 }
 func (rf *Raft) ticker() {
+	rf.lock()
+	rf.flashRpc()
+	timeOut:=rf.timeOut
+	rf.unlock()
 	for !rf.killed() {
-		rf.flashRpc()
-		timeOut:=rf.getElectionTime()
-		time.Sleep(timeOut)
+		time.Sleep(time.Duration(timeOut)*time.Millisecond)
 		rf.lock()
-		statu:=rf.statu_
-		last:=rf.lastReceive
+		sinceLastRecive:=time.Now().Sub(rf.lastReceive).Milliseconds()
+		timeOut=rf.timeOut
 		rf.unlock()
-		if statu!=Leader&&time.Now().Sub(last).Milliseconds() >timeOut.Milliseconds(){
-			 go rf.election()
+		if sinceLastRecive >= timeOut {
+			go rf.election()
+		}else{
+			timeOut-=sinceLastRecive
 		}
 	}
 }
@@ -609,7 +616,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.applied=0
 	rf.next_=make([]int,rf.peerCount)
 	rf.match_=make([]int,rf.peerCount)
-	rand.Seed(time.Now().Unix())
+	rand.Seed(time.Now().UnixNano())
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
