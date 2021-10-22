@@ -123,11 +123,14 @@ def last_line(file: str) -> str:
 
 # fmt: off
 def run_tests(
-        tests: List[str]=["2A","2B"],
-        sequential: bool = typer.Option(True, '--sequential', '-s', help='Run all test of each group in order'),
-        workers: int = typer.Option(20, '--workers', '-p', help='Number of parallel tasks'),
-        iterations: int = typer.Option(1000, '--iter', '-n', help='Number of iterations to run'),
+        tests: List[str]=["2C"],
+        sequential: bool = typer.Option(False, '--sequential', '-s', help='Run all test of each group in order'),
+        workers: int = typer.Option(10, '--workers', '-p', help='Number of parallel tasks'),
+        iterations: int = typer.Option(200, '--iter', '-n', help='Number of iterations to run'),
         output: Optional[Path] = typer.Option(None, '--output', '-o', help='Output path to use'),
+
+
+
         verbose: int = typer.Option(0, '--verbose', '-v', help='Verbosity level', count=True),
         archive: bool = typer.Option(False, '--archive', '-a', help='Save all logs intead of only failed ones'),
         race: bool = typer.Option(False, '--race/--no-race', '-r/-R', help='Run with race checker'),
@@ -214,6 +217,7 @@ def run_tests(
                             task_progress.update(tasks[test], description=f"[red]{test}[/red]")
                             results[test]['failed'].add(1)
                         else:
+                            print(f"sucess test {test} - {dest}")
                             if results[test]['completed'].n == iterations and results[test]['failed'].n == 0:
                                 task_progress.update(tasks[test], description=f"[green]{test}[/green]")
 

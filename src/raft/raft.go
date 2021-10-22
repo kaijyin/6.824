@@ -66,9 +66,9 @@ const(
 )
 //设定election时间
 const (
-	electionTimeoutTop int64= 300
-	elctionTimeoutDown int64= 200
-	hertbeatInterval int64 = 80
+	electionTimeoutTop int64= 200
+	elctionTimeoutDown int64= 150
+	hertbeatInterval int64 = 30
 )
 type Log_ struct {
 	Comand interface{}
@@ -253,19 +253,21 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	}
 	rf.logLen++;
 	rf.logs =append(rf.logs,Log_{Term_: rf.term,Comand: command})
+	DPrintf("%d append cmd idx:%d command:%d",rf.me,rf.logLen,command)
 	index:=rf.logLen
 	term:=rf.term
 	rf.persist()
 	rf.unlock()
-	rf.sendMsg(false)
+	rf.sendMsg()
 	return index, term, true
 }
-func (rf *Raft) sendMsg(heartbeat bool)  {
+func (rf *Raft) sendMsg()  {
 	rf.lock()
 	if rf.killed()||rf.statu_!=Leader{
 		rf.unlock()
 		return
 	}
+	curTerm:=rf.term
 	rf.unlock()
 	//日志复制不需要等待,只需要在收到回复后统计结果就行,结果只对Leader自身的comit有影响
 	//而Leader选举就需要等待,因为需要统计结果,判断是否能成为Leader,保证一轮只有一个Leader
@@ -273,23 +275,29 @@ func (rf *Raft) sendMsg(heartbeat bool)  {
 		if i==rf.me {
 			continue
 		}
-		go func(i int) {
-			rf.lock()
-			var entry []Log_ =nil
-			entry=rf.logs[rf.next_[i]:]
-			args := ApendArgs{rf.term, rf.me, rf.next_[i]-1, rf.logs[rf.next_[i]-1].Term_, entry, rf.commit}
-			reply := ApendReply{}
+		rf.lock()
+		if rf.killed()||rf.term!=curTerm{
 			rf.unlock()
-			send:=rf.sendApendence(i,&args,&reply)
+			return
+		}
+		var entry []Log_ =nil
+		entry=rf.logs[rf.next_[i]:]
+		args := ApendArgs{rf.term, rf.me, rf.next_[i]-1, rf.logs[rf.next_[i]-1].Term_, entry, rf.commit}
+		rf.unlock()
+		go func(i int,apendArgs ApendArgs) {
+			reply := ApendReply{}
+			send:=rf.sendApendence(i,&apendArgs,&reply)
 			if send{
 				rf.recieveApendReplay(i,&reply)
 			}
-		}(i)
+		}(i,args)
 	}
 }
 
 func (rf *Raft) Apendence(args *ApendArgs,reply *ApendReply)  {//reply的idx表示和Leader日志中一致的位置
+	//DPrintf("%d recive appendenc from %d in term:%d",rf.me,args.LeaderId,args.Term)
 	rf.lock()
+	//DPrintf("%d recive appendenc from %d in term:%d true",rf.me,args.LeaderId,args.Term)
 	defer rf.unlock()
 	if rf.killed(){
 		return
@@ -304,6 +312,7 @@ func (rf *Raft) Apendence(args *ApendArgs,reply *ApendReply)  {//reply的idx表�
 	if rf.term <args.Term{
 		rf.BeFlower(args.Term)
 	}
+	//DPrintf("%d recive appendenc from %d in term:%d true",rf.me,args.LeaderId,args.Term)
 	//收到Rpc一定要刷新选举超时时间
 	rf.flashRpc()
 	previdx := args.PrevLogIdx
@@ -311,9 +320,8 @@ func (rf *Raft) Apendence(args *ApendArgs,reply *ApendReply)  {//reply的idx表�
 	//收到不可靠的Rpc
 	//条件1:如果说是有一个拓机很久又重连的,然后Leader初始的next又比较大
 	//条件2:如果发送前一个不匹配,需要再往前退
-	//条件3:由于RPC超时,或者重新选举(Leader已经复制日志到大部分成功并提交,但是flower选举超时,重新成为leader)造成,
 	//操作:直接退回到commit,减少RPC请求次数
-	if rf.logLen <previdx || rf.logs[previdx].Term_!=prevTerm||previdx<rf.commit{
+	if rf.logLen <previdx || rf.logs[previdx].Term_!=prevTerm{
 		reply.Idx=rf.commit
 		reply.Term=rf.term
 		return
@@ -331,10 +339,12 @@ func (rf *Raft) Apendence(args *ApendArgs,reply *ApendReply)  {//reply的idx表�
 		previdx++
 		j++
 	}
+	rf.logLen=len(rf.logs)-1
 	for ;j< lengh;j++{
 		rf.logs =append(rf.logs,args.Entries[j])
+		rf.logLen++;
+		DPrintf("flower %d append idx:%d commd:%d",rf.me,rf.logLen,rf.logs[rf.logLen].Comand)
 	}
-	rf.logLen = len(rf.logs)-1
 	//日志更改,需要做持久化操作,持久化操作要在Leader收到reply并comit之前做,所以收到就处理是最合适的
 	rf.persist()
 	//提交日志
@@ -343,16 +353,18 @@ func (rf *Raft) Apendence(args *ApendArgs,reply *ApendReply)  {//reply的idx表�
 		for rf.applied<rf.commit{
 			rf.applied++
 			rf.applyCh<-ApplyMsg{CommandValid: true, Command: rf.logs[rf.applied].Comand, CommandIndex: rf.applied}
+			DPrintf("flower %d commit idx:%d commd:%d",rf.me,rf.applied,rf.logs[rf.applied].Comand)
 		}
 	}
 	//此时服务机收到复制请求的部分就和Leader是一样的了,只要Leader不更改,并收到大部分复制日志成功的reply后跟新comit,下次再发送日志复制请求自己也跟着跟新comit
 	//repley.idx=rf.len不对,可能Flower的日志比Leader的日志要长,但是前面确实吻合的,这是由于超时后重新选举造成的
 	//你可能会问,这不是不对嘛,投票的时候,不是更长的优先级更高吗,是啊,但是只要先进入选举,任期就更高,原本Leader收到请求,只能乖乖变为flower,虽然曾经的Leader不会投票给他
 	//但是只要收到过半的投票就行了呀
-	reply.Idx=args.PrevLogIdx+ len(args.Entries)
+	reply.Idx=args.PrevLogIdx+ lengh
 	reply.Term=rf.term
 }
 func (rf *Raft) recieveApendReplay(i int,reply *ApendReply){
+	//DPrintf("%d recive appendenc Reply from %d in term:%d",rf.me,i,reply.Term)
 	rf.lock()
 	defer rf.unlock()
 	//时刻进行状态检查,减少多余的计算
@@ -365,12 +377,16 @@ func (rf *Raft) recieveApendReplay(i int,reply *ApendReply){
 		return
 	}
 	//不属于同一任期的不参与判断
-	if reply.Term!=rf.term {//可能是RPC延迟导致的,没用的reply,直接丢弃
+	if reply.Term!=rf.term {
 		return
 	}
-
+	////返回的replyidx不是当前发送的日志,即日志没有复制成功
+	//不能,因为当前leader也可能有上一term中没有提交的正确日志!
+    //if rf.logs[reply.Idx].Term_!=rf.term{
+    //	return
+	//}
 	//Flower的reply.Idx以及之前的log已经和Leader相同
-
+	//DPrintf("%d recive appendenc Reply from %d in term:%d TRUE",rf.me,i,reply.Term)
 	//更新下一次发送的next标记
 	rf.next_[i]=reply.Idx+1
 	rf.match_[i]=rf.next_[i]-1
@@ -378,7 +394,7 @@ func (rf *Raft) recieveApendReplay(i int,reply *ApendReply){
 	//开始进入Leader提交日志判断
 	//条件1:返回的replyidx不是当前任期发送的日志,即日志没有复制成功
 	//条件2:日志提交comit都大于reply.idx了,不用再用来判断是否更新commit
-	if rf.logs[reply.Idx].Term_!=rf.term|| rf.commit>=reply.Idx{
+	if rf.commit>=reply.Idx{
 		return
 	}
 	//判断是否集群中大部分服务器都复制了idx以及之前的日志,如果是,则Leader提交日志到idx
@@ -391,16 +407,17 @@ func (rf *Raft) recieveApendReplay(i int,reply *ApendReply){
 			count++
 		}
 	}
-	if count>=(rf.peerCount+1)/2{//大部分都已经复制,提交
+	if count>rf.peerCount/2{//大部分都已经复制,提交
 		rf.commit=reply.Idx
 		for rf.applied<rf.commit{
 			rf.applied++
 			rf.applyCh<-ApplyMsg{CommandValid: true, Command: rf.logs[rf.applied].Comand, CommandIndex: rf.applied}
+			DPrintf("leader %d commit idx:%d commd:%d",rf.me,rf.applied,rf.logs[rf.applied].Comand)
 		}
 	}
 }
 func (rf *Raft) sendApendence(server int,args *ApendArgs,reply *ApendReply)bool  {
-	//DPrintf("%d send appendecne to %d",rf.me,server)
+	DPrintf("%d send appendecne to %d",rf.me,server)
 	ok := rf.peers[server].Call("Raft.Apendence", args, reply)
 	return ok
 }
@@ -409,17 +426,14 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
 	return ok
 }
-func (rf *Raft) getElectionTime() int64  {//获取down-up的随机超时时间
-	i := rand.Int63()%(electionTimeoutTop-elctionTimeoutDown) + elctionTimeoutDown
-	//DPrintf("server %d election time :%d",rf.me,i)
-	return i
-}
-func (rf *Raft) flashRpc()  {
+func (rf *Raft) flashRpc()  {//获取down-up的随机超时时间
 	rf.lastReceive=time.Now()
-	rf.timeOut=rf.getElectionTime()
-
+	time:=(rand.Int63()%(electionTimeoutTop-elctionTimeoutDown)) + elctionTimeoutDown
+	DPrintf("%d flashRpc lastRecive:%d timeOut:%d",rf.me,rf.lastReceive.UnixNano(), time)
+	rf.timeOut=time
 }
 func (rf *Raft) lock()  {
+	//DPrintf("%d lock",rf.me)
 	rf.mu.Lock()
 }
 func (rf *Raft) unlock()  {
@@ -435,42 +449,47 @@ func (rf *Raft) election()  {
 	}
 	rf.BeCandidate()
 	electionTerm :=rf.term
-	request := RequestVoteArgs{rf.term, rf.me, rf.logLen, rf.logs[rf.logLen].Term_}
 	rf.unlock()
 	finish:=int64(1)
-	ok:=false
 	cond := sync.NewCond(new(sync.Mutex))
 	for i:=0;i<rf.peerCount;i++{
 		if i==rf.me{
 			continue
 		}
-		reply := RequestVoteReply{-1,0}
-		go func(server int) {
+		rf.lock()
+		if rf.killed() ||rf.term!=electionTerm{
+			rf.unlock()
+			return
+		}
+		requestArgs := RequestVoteArgs{electionTerm, rf.me, rf.logLen, rf.logs[rf.logLen].Term_}
+		rf.unlock()
+		go func(server int,request RequestVoteArgs) {
+			reply := RequestVoteReply{0,0}
 			send := rf.sendRequestVote(server, &request, &reply)
+			//DPrintf("%d reciveVote from %d in term %d vote:%d",rf.me,server, reply.Term,reply.VoteGranted)
 			if send&&rf.reciveVoteReply(&reply){
-				ok=true
+				atomic.AddInt64(&finish,int64(rf.peerCount))
 			}
 			atomic.AddInt64(&finish,1)
 			cond.Broadcast()
-		}(i)
+		}(i,requestArgs)
 	}
 	cond.L.Lock()
-	defer cond.L.Unlock()
+	rf.lock()
+	curTerm:=rf.term
+	rf.unlock()
 	//阻塞,等待收到所有人的回复,或者大部分人投票通过,或者RPC请求延迟,进入新的任期,收到其余服务器的RPC后状态改变后,停止阻塞
-	for  !rf.killed(){
+	for  !rf.killed()&&int(finish)<rf.peerCount&&curTerm== electionTerm{
+		cond.Wait()
 		rf.lock()
-		if !ok&&int(finish)!=rf.peerCount&&rf.term== electionTerm {
-			rf.unlock()
-			cond.Wait()
-		}else {
-			rf.unlock()
-			break
-		}
+		curTerm=rf.term
+		rf.unlock()
 	}
+	cond.L.Unlock()
 	//DPrintf("%d election in %d finished",rf.me,electionTerm)
 }
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
-	//DPrintf("%d recive req from %d",rf.me,args.CandidateId)
+	//DPrintf("%d recive Votereq from %d",rf.me,args.CandidateId)
 	rf.lock()
 	defer rf.unlock()
 	reply.VoteGranted =0
@@ -500,12 +519,12 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		reply.Term =rf.term
 		return
 	}
+	//收到RPC请求刷新选举超时时间
+	rf.flashRpc()
 	//投票
 	reply.VoteGranted =1
 	rf.voteFor =args.CandidateId
 	reply.Term =rf.term
-	//收到RPC请求刷新选举超时时间
-	rf.flashRpc()
 	//投票成功,持久化,不然可能出现一个人在一轮给两个人投票的情况
 	rf.persist()
 }
@@ -519,12 +538,13 @@ func (rf *Raft) reciveVoteReply(reply *RequestVoteReply) bool {
 		rf.BeFlower(reply.Term)
 		return false
 	}
+	rf.flashRpc()
 	if reply.Term==rf.term&&reply.VoteGranted ==1{
 		rf.votes++
-	}
-	if rf.votes>rf.peerCount/2{
-		rf.BeLeader()
-		return true
+		if rf.votes>rf.peerCount/2{
+			rf.BeLeader()
+			return true
+		}
 	}
 	return false
 }
@@ -539,6 +559,7 @@ func (rf *Raft) killed() bool {
 	return z == 1
 }
 func (rf *Raft) BeFlower(term int)  {
+	//DPrintf("%d become folower in term %d",rf.me,term)
 	rf.statu_=Flower
 	rf.voteFor =-1
 	rf.term =term
@@ -550,12 +571,12 @@ func (rf *Raft) BeCandidate()  {
 	rf.voteFor =rf.me
 	rf.votes=1
 	rf.term++
+	//DPrintf("%d become Candidate in term %d",rf.me,rf.term)
 	//任期更改,持久化
 	rf.persist()
-	rf.flashRpc()
 }
 func (rf *Raft) BeLeader()  {
-	//DPrintf("%d become leader",rf.me)
+	DPrintf("%d become leader in term%d",rf.me,rf.term)
 	rf.statu_=Leader
 	for i:=0;i<rf.peerCount;i++{
 		rf.next_[i]=rf.commit+1
@@ -564,16 +585,17 @@ func (rf *Raft) BeLeader()  {
 	go rf.heartTiker()
 }
 func (rf *Raft) heartTiker()  {
+	rf.sendMsg()
 	//选举结束立刻发送心跳
 	for !rf.killed(){
+		time.Sleep(time.Duration(hertbeatInterval)*time.Millisecond)
 		rf.lock()
-		if rf.statu_!=Leader{
-			rf.unlock()
+		statu:=rf.statu_
+		rf.unlock()
+		if statu!=Leader{
 			break
 		}
-		rf.unlock()
-		rf.sendMsg(true)
-		time.Sleep(time.Duration(hertbeatInterval)*time.Millisecond)
+		rf.sendMsg()
 	}
 }
 func (rf *Raft) ticker() {
@@ -585,13 +607,16 @@ func (rf *Raft) ticker() {
 		time.Sleep(time.Duration(timeOut)*time.Millisecond)
 		rf.lock()
 		sinceLastRecive:=time.Now().Sub(rf.lastReceive).Milliseconds()
-		timeOut=rf.timeOut
-		rf.unlock()
-		if sinceLastRecive >= timeOut {
-			go rf.election()
+		if sinceLastRecive >= rf.timeOut{
+			rf.flashRpc()
+			timeOut=rf.timeOut
+			if rf.statu_!=Leader{
+				go rf.election()
+			}
 		}else{
 			timeOut-=sinceLastRecive
 		}
+		rf.unlock()
 	}
 }
 func Make(peers []*labrpc.ClientEnd, me int,
@@ -616,8 +641,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.applied=0
 	rf.next_=make([]int,rf.peerCount)
 	rf.match_=make([]int,rf.peerCount)
-	rand.Seed(time.Now().UnixNano())
-
+    rand.Seed(int64(rf.me))
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
