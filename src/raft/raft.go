@@ -107,6 +107,10 @@ func (rf *Raft) GetFlowerEntries(server int) []Log_ {
 	startIdx:=rf.GetFirstLogIdx()
 	return rf.logs[rf.next_[server]-startIdx:]
 }
+func (rf *Raft) GetCommand(idx int)interface{}{
+	startIdx:=rf.GetFirstLogIdx()
+    return rf.logs[idx-startIdx].Command
+}
 func (rf *Raft) GetState() (int,bool) {
 	rf.mu.Lock()
 	term:=rf.term
@@ -114,14 +118,16 @@ func (rf *Raft) GetState() (int,bool) {
 	rf.mu.Unlock()
 	return term,isLeader
 }
-
-func (rf *Raft) persist() {
+func (rf *Raft) GetRaftStateData()[]byte{
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
 	e.Encode(rf.logs)
 	e.Encode(rf.voteFor)
 	e.Encode(rf.term)
-	data := w.Bytes()
+	return w.Bytes()
+}
+func (rf *Raft) persist() {
+	data:=rf.GetRaftStateData()
 	rf.persister.SaveRaftState(data)
 }
 
@@ -142,16 +148,29 @@ func (rf *Raft) readPersist(data []byte) {
 func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int, snapshot []byte) bool {
    rf.lock()
    defer rf.unlock()
-   if rf.commit>=lastIncludedIndex{
-   	return false
+   firstLogIdx:=rf.GetFirstLogIdx()
+   if firstLogIdx>lastIncludedIndex{
+   	  return false
    }
-
+   //len=3 log[7:0]?
+   rf.logs=rf.logs[lastIncludedIndex-firstLogIdx:]
+   if len(rf.logs)==0{
+   	rf.logs=append(rf.logs,Log_{Term_: lastIncludedTerm,Idx: lastIncludedIndex})
+   }
+   state:=rf.GetRaftStateData()
+   rf.persister.SaveStateAndSnapshot(state,snapshot)
 	return true
 }
 
 func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	// Your code here (2D).
-
+	rf.lock()
+	defer rf.unlock()
+	firstLogIdx:=rf.GetFirstLogIdx()
+	//第一个是不用的,留着
+	rf.logs=rf.logs[index-firstLogIdx:]
+	state:=rf.GetRaftStateData()
+	rf.persister.SaveStateAndSnapshot(state,snapshot)
 }
 
 
@@ -226,11 +245,12 @@ func (rf *Raft) sendMsg(leaderTerm int) bool {
 	}
 	return true
 }
+// 异步提交
 func (rf *Raft) CommitLog(commitIdx int){
 	rf.commitMu.Lock()
 	for rf.applied<commitIdx{
 		rf.applied++
-		rf.applyCh<-ApplyMsg{CommandValid: true, Command: rf.logs[rf.applied].Command, CommandIndex: rf.applied}
+		rf.applyCh<-ApplyMsg{CommandValid: true, Command: rf.GetCommand(rf.applied), CommandIndex: rf.applied}
 	}
 	rf.commitMu.Unlock()
 }
