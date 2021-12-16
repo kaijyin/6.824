@@ -73,10 +73,8 @@ type Raft struct {
 	persister *Persister          // Object to hold this peer's persisted state
 	me        int                 // this peer's index into peers[]
 	dead      int32               // set by Kill()
-
 	applyCh     chan ApplyMsg
 	logs        []Log_
-	logLen      int
 	voteFor     int
 	votes       int
 	term        int
@@ -92,6 +90,23 @@ type Raft struct {
 	match_ []int
 }
 
+func (rf *Raft) GetLastLogIdx() int {
+	return rf.logs[len(rf.logs)-1].Idx
+}
+func (rf *Raft) GetFirstLogIdx() int {
+	return rf.logs[0].Idx
+}
+func (rf *Raft) GetLogTerm(idx int) int {
+	startIdx:=rf.GetFirstLogIdx()
+	return rf.logs[idx-startIdx].Term_
+}
+func (rf *Raft) GetLogLen() int {
+	return len(rf.logs)
+}
+func (rf *Raft) GetFlowerEntries(server int) []Log_ {
+	startIdx:=rf.GetFirstLogIdx()
+	return rf.logs[rf.next_[server]-startIdx:]
+}
 func (rf *Raft) GetState() (int,bool) {
 	rf.mu.Lock()
 	term:=rf.term
@@ -121,7 +136,6 @@ func (rf *Raft) readPersist(data []byte) {
 	d.Decode(&rf.logs)
 	d.Decode(&rf.voteFor)
 	d.Decode(&rf.term)
-	rf.logLen=len(rf.logs)-1
 }
 
 
@@ -175,14 +189,13 @@ type AppendReply struct {
 */
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	rf.lock()
+	term:=rf.term
 	if rf.killed()||rf.state_ !=Leader{
 		rf.unlock()
-		return -1,-1,false
+		return -1,term,false
 	}
-	rf.logLen++
-	rf.logs =append(rf.logs,Log_{Term_: rf.term, Command: command})
-	index:=rf.logLen
-	term:=rf.term
+	index:=rf.logs[len(rf.logs)-1].Idx+1
+	rf.logs =append(rf.logs,Log_{Term_: rf.term, Command: command,Idx: index})
 	rf.persist()
 	rf.unlock()
 	rf.sendMsg(term)
@@ -200,9 +213,8 @@ func (rf *Raft) sendMsg(leaderTerm int) bool {
 			rf.unlock()
 			return false
 		}
-		var entry []Log_ =nil
-		entry=rf.logs[rf.next_[i]:]
-		args := AppendArgs{leaderTerm, rf.me, rf.next_[i]-1, rf.logs[rf.next_[i]-1].Term_, entry, rf.commit}
+		entry:=rf.GetFlowerEntries(i)
+		args := AppendArgs{leaderTerm, rf.me, rf.next_[i]-1, rf.GetLogTerm(rf.next_[i]-1), entry, rf.commit}
 		rf.unlock()
 		go func(i int) {
 			reply := AppendReply{}
@@ -247,7 +259,8 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	//条件1:如果说是有一个拓机很久又重连的,然后Leader初始的next又比较大
 	//条件2:如果发送前一个不匹配,需要再往前退
 	//操作:直接退回到commit,减少RPC请求次数
-	if rf.logLen < prevIdx || rf.logs[prevIdx].Term_!=prevTerm{
+	lastIdx:=rf.GetLastLogIdx()
+	if lastIdx < prevIdx || rf.logs[prevIdx].Term_!=prevTerm{
 		reply.Idx=rf.commit
 		reply.Term=rf.term
 		return
@@ -257,7 +270,7 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	j:=0
 	//复制日志
 	length :=len(args.Entries)
-	for ; prevIdx <=rf.logLen &&j< length;{
+	for ; prevIdx <=lastIdx &&j< length;{
 		if rf.logs[prevIdx].Term_!=args.Entries[j].Term_{
 			rf.logs = rf.logs[:prevIdx]
 			break
@@ -265,10 +278,8 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 		prevIdx++
 		j++
 	}
-	rf.logLen=len(rf.logs)-1
 	for ;j< length;j++{
 		rf.logs =append(rf.logs,args.Entries[j])
-		rf.logLen++
 	}
 	//日志更改,需要做持久化操作,持久化操作要在Leader收到reply并comit之前做,所以收到就处理是最合适的
 	rf.persist()
@@ -363,7 +374,8 @@ func (rf *Raft) election(electionTerm int)  {
 			rf.unlock()
 			return
 		}
-		request:= RequestVoteArgs{electionTerm, rf.me, rf.logLen, rf.logs[rf.logLen].Term_}
+		lastLogIdx:=rf.GetLastLogIdx()
+		request:= RequestVoteArgs{electionTerm, rf.me, lastLogIdx, rf.GetLogTerm(lastLogIdx)}
 		rf.unlock()
 		go func(server int) {
 			reply := RequestVoteReply{0,0}
@@ -388,8 +400,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	rf.lock()
 	defer rf.unlock()
 	reply.VoteGranted =0
-	lastIdx :=rf.logLen
-	lastTerm :=rf.logs[rf.logLen].Term_
+	lastIdx :=rf.GetLastLogIdx()
+	lastTerm :=rf.GetLogTerm(lastIdx)
 	if rf.killed()||args.Term <rf.term {
 		reply.Term =rf.term
 		return
@@ -528,7 +540,6 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.logs =make([]Log_,1)
 	rf.logs[0]=Log_{Command: 0,Term_: 0,Idx: 0}
 	rf.commit=0
-	rf.logLen =0
 	rf.applied=0
 	rf.next_=make([]int,rf.peerCount)
 	rf.match_=make([]int,rf.peerCount)
