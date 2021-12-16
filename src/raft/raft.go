@@ -115,26 +115,22 @@ func (rf *Raft) readPersist(data []byte) {
 	if data == nil || len(data) < 1 { // bootstrap without any state?
 		return
 	}
-	// Your code here (2C).
-	// Example:
 	r := bytes.NewBuffer(data)
 	d := labgob.NewDecoder(r)
-	var  logs []Log_
-	d.Decode(&logs)
-	rf.logs =logs
-	var voteFor int
-	d.Decode(&voteFor)
-	rf.voteFor =voteFor
-	var term int
-	d.Decode(&term)
-	rf.term =term
+	rf.logs=rf.logs[:1]
+	d.Decode(&rf.logs)
+	d.Decode(&rf.voteFor)
+	d.Decode(&rf.term)
 	rf.logLen=len(rf.logs)-1
 }
 
 
 func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int, snapshot []byte) bool {
-
-	// Your code here (2D).
+   rf.lock()
+   defer rf.unlock()
+   if rf.commit>=lastIncludedIndex{
+   	return false
+   }
 
 	return true
 }
