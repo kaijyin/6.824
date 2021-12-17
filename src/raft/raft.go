@@ -17,7 +17,6 @@ package raft
 //  should send an ApplyMsg to the service (or tester)
 //  in the same server.
 
-
 import (
 	"bytes"
 	//"labgob"
@@ -97,19 +96,26 @@ func (rf *Raft) GetFirstLogIdx() int {
 	return rf.logs[0].Idx
 }
 func (rf *Raft) GetLogTerm(idx int) int {
+	DPrintf("%d getLogTerm index%d",rf.me,idx)
 	startIdx:=rf.GetFirstLogIdx()
-	return rf.logs[idx-startIdx].Term_
+	curIdx:=idx-startIdx
+	return rf.logs[curIdx].Term_
 }
 func (rf *Raft) GetLogLen() int {
 	return len(rf.logs)
 }
+
+func (rf *Raft) CutLog(idx int)[]Log_{
+	right:= idx -rf.GetFirstLogIdx()
+	return rf.logs[:right]
+}
 func (rf *Raft) GetFlowerEntries(server int) []Log_ {
-	startIdx:=rf.GetFirstLogIdx()
-	return rf.logs[rf.next_[server]-startIdx:]
+	curIdx:=rf.next_[server]-rf.GetFirstLogIdx()
+	return rf.logs[curIdx:]
 }
 func (rf *Raft) GetCommand(idx int)interface{}{
-	startIdx:=rf.GetFirstLogIdx()
-    return rf.logs[idx-startIdx].Command
+	curIdx:=idx-rf.GetFirstLogIdx()
+    return rf.logs[curIdx].Command
 }
 func (rf *Raft) GetState() (int,bool) {
 	rf.mu.Lock()
@@ -149,17 +155,29 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
    rf.lock()
    defer rf.unlock()
    firstLogIdx:=rf.GetFirstLogIdx()
-   if firstLogIdx>lastIncludedIndex{
+   if firstLogIdx>=lastIncludedIndex{
    	  return false
    }
-   //len=3 log[7:0]?
-   rf.logs=rf.logs[lastIncludedIndex-firstLogIdx:]
-   if len(rf.logs)==0{
-   	rf.logs=append(rf.logs,Log_{Term_: lastIncludedTerm,Idx: lastIncludedIndex})
+   if lastIncludedIndex>rf.commit{
+   	rf.commit=lastIncludedIndex
    }
+   rf.commitMu.Lock()
+   if lastIncludedIndex>rf.applied{
+   	rf.applied=lastIncludedIndex
+   }
+   rf.commitMu.Unlock()
+   //len=3 log[7:0]?
+   if lastIncludedIndex>=rf.GetLastLogIdx(){
+   	 rf.logs=make([]Log_,0)
+   	 rf.logs=append(rf.logs,Log_{Term_: lastIncludedTerm,Idx: lastIncludedIndex})
+   }else {
+	   rf.logs = rf.logs[lastIncludedIndex-firstLogIdx:]
+   }
+	DPrintf("%d afterInstallSnapshot index:%d commit %d ,firstIdx%d loglen:%d lastidx:%d",rf.me,lastIncludedIndex,
+		rf.commit,rf.GetFirstLogIdx(),rf.GetLogLen(),rf.GetLastLogIdx())
    state:=rf.GetRaftStateData()
    rf.persister.SaveStateAndSnapshot(state,snapshot)
-	return true
+   return true
 }
 
 func (rf *Raft) Snapshot(index int, snapshot []byte) {
@@ -169,6 +187,8 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	firstLogIdx:=rf.GetFirstLogIdx()
 	//第一个是不用的,留着
 	rf.logs=rf.logs[index-firstLogIdx:]
+	DPrintf("%d aftersnapshot index:%d commit %d ,firstIdx%d loglen:%d lastidx:%d",rf.me,index,
+		rf.commit,rf.GetFirstLogIdx(),rf.GetLogLen(),rf.GetLastLogIdx())
 	state:=rf.GetRaftStateData()
 	rf.persister.SaveStateAndSnapshot(state,snapshot)
 }
@@ -196,6 +216,9 @@ type AppendArgs struct {
 	PrevLogTerm int
 	Entries  []Log_
 	LeaderCommit int
+
+	IsSnapShot bool
+	Snapshot      []byte
 }
 type AppendReply struct {
 	Term int
@@ -213,7 +236,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 		rf.unlock()
 		return -1,term,false
 	}
-	index:=rf.logs[len(rf.logs)-1].Idx+1
+	index:=rf.GetLastLogIdx()+1
 	rf.logs =append(rf.logs,Log_{Term_: rf.term, Command: command,Idx: index})
 	rf.persist()
 	rf.unlock()
@@ -232,8 +255,32 @@ func (rf *Raft) sendMsg(leaderTerm int) bool {
 			rf.unlock()
 			return false
 		}
-		entry:=rf.GetFlowerEntries(i)
-		args := AppendArgs{leaderTerm, rf.me, rf.next_[i]-1, rf.GetLogTerm(rf.next_[i]-1), entry, rf.commit}
+		var args AppendArgs
+		if rf.GetFirstLogIdx()>=rf.next_[i]{
+			snapShot:=rf.persister.ReadSnapshot()
+			args=AppendArgs{
+				Term:         leaderTerm,
+				LeaderId:     rf.me,
+				PrevLogIdx:   rf.GetFirstLogIdx(),
+				PrevLogTerm:   rf.GetLogTerm(rf.GetFirstLogIdx()),
+				IsSnapShot:   true,
+				Snapshot:     snapShot,
+			}
+		}else{
+			DPrintf("%d before send i:%d next[i]-1:%d  commit %d ,firstIdx%d loglen:%d lastidx:%d",rf.me,i,rf.next_[i]-1,
+				rf.commit,rf.GetFirstLogIdx(),rf.GetLogLen(),rf.GetLastLogIdx())
+			entry:=rf.GetFlowerEntries(i)
+			args=AppendArgs{
+				Term:         leaderTerm,
+				LeaderId:     rf.me,
+				PrevLogIdx:   rf.next_[i]-1,
+				PrevLogTerm:  rf.GetLogTerm(rf.next_[i]-1),
+				Entries:      entry,
+				LeaderCommit: rf.commit,
+				IsSnapShot:   false,
+			}
+		}
+		//args := AppendArgs{Term:leaderTerm rf.me, rf.next_[i]-1, rf.GetLogTerm(rf.next_[i]-1), entry, rf.commit}
 		rf.unlock()
 		go func(i int) {
 			reply := AppendReply{}
@@ -246,11 +293,13 @@ func (rf *Raft) sendMsg(leaderTerm int) bool {
 	return true
 }
 // 异步提交
-func (rf *Raft) CommitLog(commitIdx int){
+func (rf *Raft) CommitLog(logs []Log_){
 	rf.commitMu.Lock()
-	for rf.applied<commitIdx{
+	startIdx:=logs[0].Idx
+	endIdx:=logs[len(logs)-1].Idx
+	for rf.applied<endIdx{
 		rf.applied++
-		rf.applyCh<-ApplyMsg{CommandValid: true, Command: rf.GetCommand(rf.applied), CommandIndex: rf.applied}
+		rf.applyCh<-ApplyMsg{CommandValid: true, Command:logs[rf.applied-startIdx].Command, CommandIndex: rf.applied}
 	}
 	rf.commitMu.Unlock()
 }
@@ -273,14 +322,27 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	//DPrintf("%d recive appendenc from %d in term:%d true",rf.me,args.LeaderId,args.Term)
 	//收到Rpc一定要刷新选举超时时间
 	rf.flashRpc()
+	//安装snapshot
+	if args.IsSnapShot{
+		rf.applyCh<-ApplyMsg{
+			SnapshotValid: true,
+			Snapshot:      args.Snapshot,
+			SnapshotTerm:  args.PrevLogTerm,
+			SnapshotIndex: args.PrevLogIdx,
+		}
+		reply.Idx=args.PrevLogIdx
+		reply.Term=rf.term
+		return
+	}
 	prevIdx := args.PrevLogIdx
 	prevTerm := args.PrevLogTerm
 	//收到不可靠的Rpc
 	//条件1:如果说是有一个拓机很久又重连的,然后Leader初始的next又比较大
 	//条件2:如果发送前一个不匹配,需要再往前退
 	//操作:直接退回到commit,减少RPC请求次数
+	firstIdx:=rf.GetFirstLogIdx()
 	lastIdx:=rf.GetLastLogIdx()
-	if lastIdx < prevIdx || rf.logs[prevIdx].Term_!=prevTerm{
+	if firstIdx>prevIdx||lastIdx < prevIdx || rf.GetLogTerm(prevIdx)!=prevTerm{
 		reply.Idx=rf.commit
 		reply.Term=rf.term
 		return
@@ -291,8 +353,8 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	//复制日志
 	length :=len(args.Entries)
 	for ; prevIdx <=lastIdx &&j< length;{
-		if rf.logs[prevIdx].Term_!=args.Entries[j].Term_{
-			rf.logs = rf.logs[:prevIdx]
+		if rf.GetLogTerm(prevIdx)!=args.Entries[j].Term_{
+			rf.logs=rf.CutLog(prevIdx)
 			break
 		}
 		prevIdx++
@@ -306,7 +368,7 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	//提交日志
 	if args.LeaderCommit>rf.commit{//有可能因为网络延迟没有刷新Flower的RPCtimer,重新选举,原本的Leader的尽管commit更高,但是也成为了Flower
 		rf.commit=args.LeaderCommit
-		go rf.CommitLog(rf.commit)
+		go rf.CommitLog(rf.CutLog(rf.commit+1))
 	}
 	//此时服务机收到复制请求的部分就和Leader是一样的了,只要Leader不更改,并收到大部分复制日志成功的reply后跟新comit,下次再发送日志复制请求自己也跟着跟新comit
 	//repley.idx=rf.len不对,可能Flower的日志比Leader的日志要长,但是前面确实吻合的,这是由于超时后重新选举造成的
@@ -360,7 +422,7 @@ func (rf *Raft) receiveAppendReplay(i int,reply *AppendReply){
 	}
 	if count>rf.peerCount/2 &&rf.commit<reply.Idx{//大部分都已经复制,提交
 		rf.commit=reply.Idx
-		go rf.CommitLog(rf.commit)
+		go rf.CommitLog(rf.CutLog(rf.commit+1))
 	}
 }
 func (rf *Raft) sendAppendLog(server int,args *AppendArgs,reply *AppendReply)bool  {
