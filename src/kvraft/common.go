@@ -1,30 +1,31 @@
 package kvraft
 
+import "log"
+
 const (
-	OK             = "OK"
-	ErrNoKey       = "ErrNoKey"
-	ErrWrongLeader = "ErrWrongLeader"
+	Get = 1
+	Put = 2
+	Append = 3
 )
 
-type Err string
 
-// Put or Append
-type PutAppendArgs struct {
+type RequestArgs struct {
+	Type  uint8 // 0 => get, 1 => put, 2 => append
 	Key   string
 	Value string
-	Op    string // "Put" or "Append"
 }
 
-type PutAppendReply struct {
-	Err Err
-}
-
-type GetArgs struct {
-	Key string
-	// You'll have to add definitions here.
-}
-
-type GetReply struct {
-	Err   Err
+type ExecuteReply struct {
+    RequestApplied bool
 	Value string
 }
+
+const Debug = false
+
+func DPrintf(format string, a ...interface{}) (n int, err error) {
+	if Debug {
+		log.Printf(format, a...)
+	}
+	return
+}
+

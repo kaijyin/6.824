@@ -143,10 +143,15 @@ func (rf *Raft) readPersist(data []byte) {
 	}
 	r := bytes.NewBuffer(data)
 	d := labgob.NewDecoder(r)
-	rf.logs=rf.logs[:1]
-	d.Decode(&rf.logs)
-	d.Decode(&rf.voteFor)
-	d.Decode(&rf.term)
+	var logs []Log_
+	d.Decode(&logs)
+	rf.logs=logs
+	var voteFor int
+	d.Decode(&voteFor)
+	rf.voteFor=voteFor
+	var term int
+	d.Decode(&term)
+	rf.term=term
 	rf.commit=rf.logs[0].Idx
 	rf.applied=rf.logs[0].Idx
 }
@@ -185,6 +190,9 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	rf.lock()
 	defer rf.unlock()
 	firstLogIdx:=rf.GetFirstLogIdx()
+	if firstLogIdx>=index{
+		return
+	}
 	//第一个是不用的,留着
 	rf.logs=rf.logs[index-firstLogIdx:]
 	state:=rf.GetRaftStateData()
@@ -279,11 +287,11 @@ func (rf *Raft) sendMsg(leaderTerm int) bool {
 		}
 		//args := AppendArgs{Term:leaderTerm rf.me, rf.next_[i]-1, rf.GetLogTerm(rf.next_[i]-1), entry, rf.commit}
 		rf.unlock()
-		go func(i int) {
+		go func(server int) {
 			reply := AppendReply{}
-			send:=rf.sendAppendLog(i,&args,&reply)
+			send:=rf.sendAppendLog(server,&args,&reply)
 			if send{
-				rf.receiveAppendReplay(i,leaderTerm,&reply)
+				rf.receiveAppendReplay(server,leaderTerm,&reply)
 			}
 		}(i)
 	}
@@ -476,9 +484,11 @@ func (rf *Raft) election(electionTerm int)  {
 	cond.L.Lock()
 	curTerm,_:=rf.GetState()
 	//阻塞,等待收到所有人的回复,或者大部分人投票通过,或者RPC请求延迟,进入新的任期,收到其余服务器的RPC后状态改变后,停止阻塞
-	for  !rf.killed()&&int(finish)<rf.peerCount&&curTerm== electionTerm{
+	curFinish:=atomic.LoadInt64(&finish)
+	for  !rf.killed()&&int(curFinish)<rf.peerCount&&curTerm== electionTerm{
 		cond.Wait()
 		curTerm,_=rf.GetState()
+		curFinish=atomic.LoadInt64(&finish)
 	}
 	cond.L.Unlock()
 }
@@ -573,8 +583,7 @@ func (rf *Raft) BeLeader()  {
 		rf.next_[i]=rf.commit+1
 		rf.match_[i]=0
 	}
-	term:=rf.term
-	go rf.heartTicker(term)
+	go rf.heartTicker(rf.term)
 }
 func (rf *Raft) heartTicker(leaderTerm int)  {
 	if !rf.sendMsg(leaderTerm){
@@ -603,8 +612,7 @@ func (rf *Raft) electionTicker() {
 		sinceLastReceive :=time.Now().Sub(rf.lastReceive).Milliseconds()
 		if sinceLastReceive >= rf.timeOut&&rf.state_!=Leader{
 			rf.BeCandidate()
-			term:=rf.term
-			go rf.election(term)
+			go rf.election(rf.term)
 		}
 		timeOut=rf.timeOut
 		rf.unlock()

@@ -4,27 +4,15 @@ import (
 	"6.824/labgob"
 	"6.824/labrpc"
 	"6.824/raft"
-	"log"
+	"bytes"
 	"sync"
 	"sync/atomic"
 )
 
-const Debug = false
-
-func DPrintf(format string, a ...interface{}) (n int, err error) {
-	if Debug {
-		log.Printf(format, a...)
-	}
-	return
-}
-
-
 type Op struct {
-	Type  uint8 // 0 => get, 1 => put, 2 => append
-	Key   string
-	Value string
+	RequestArgs
+	server int
 }
-
 type KVServer struct {
 	mu      sync.Mutex
 	me      int
@@ -36,7 +24,8 @@ type KVServer struct {
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
-	mmap map[string]string
+	kvMap map[string]string
+	chMap map[int]chan ExecuteReply
 }
 func (kv *KVServer) lock() {
 	kv.mu.Lock()
@@ -46,12 +35,28 @@ func (kv *KVServer) unlock() {
 	kv.mu.Unlock()
 }
 
-func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
-	// Your code here.
-}
-
-func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
-	// Your code here.
+func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
+	kv.lock()
+	_,index,ok:=kv.rf.Start(Op{
+		RequestArgs: *args,
+		server:      kv.me,
+	})
+    if !ok{
+    	reply.RequestApplied=false
+    	kv.unlock()
+    	return
+	}
+	ch,hasVal:=kv.chMap[index]
+	if hasVal{
+		ch<-ExecuteReply{
+			RequestApplied: false,
+		}
+	}else{
+		ch=make(chan ExecuteReply)
+		kv.chMap[index]=ch
+	}
+	kv.unlock()
+	*reply=<-ch
 }
 
 //
@@ -74,27 +79,49 @@ func (kv *KVServer) killed() bool {
 	z := atomic.LoadInt32(&kv.dead)
 	return z == 1
 }
-
+func (kv *KVServer) SnapShot(){
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(kv.kvMap)
+	//可以开线程去执行snapshot
+	go kv.rf.Snapshot(kv.curIndex,w.Bytes())
+}
+func (kv *KVServer) InstallSnapShot(snapshotIndex int, snapshot []byte){
+	r := bytes.NewBuffer(snapshot)
+	d := labgob.NewDecoder(r)
+	d.Decode(&kv.kvMap)
+    kv.curIndex=snapshotIndex
+}
 func (kv *KVServer) doExecute()  {
    for !kv.killed(){
    	  args:=<-kv.applyCh
-   	  if args.CommandValid{
-         if kv.curIndex<args.CommandIndex{
-         	op:=args.Command.(Op)
-         	if op.Type==0{
-         		break
-			}else if op.Type==1{
-
-			}else if op.Type==2{
-
+   	  kv.lock()
+   	  if args.CommandValid&&kv.curIndex<args.CommandIndex{
+         	index:=args.CommandIndex
+         	op :=args.Command.(Op)
+			 ch,ok:=kv.chMap[index]
+			 reply:=ExecuteReply{RequestApplied: op.server==kv.me}
+			 if op.Type==Get&&ok&&reply.RequestApplied{
+			 	reply.Value=kv.kvMap[op.Key]
+			}else if op.Type==Put{
+                kv.kvMap[op.Key]= op.Value
+			}else if op.Type==Append{
+                kv.kvMap[op.Key]+= op.Value
+			}
+			if ok {
+				ch<-reply
+				delete(kv.chMap,index)
 			}
          	kv.curIndex=args.CommandIndex
-		 }
-	  }else{
-		  if kv.curIndex<args.SnapshotIndex{
-
-		  }
+         	if len(kv.rf.GetRaftStateData())>=kv.maxraftstate{
+         		kv.SnapShot()
+			}
+	  }else if args.SnapshotValid &&kv.curIndex<args.SnapshotIndex{
+	  	// 必须先安装日志,再改具体的kv存储
+	  	  kv.rf.CondInstallSnapshot(args.SnapshotTerm,args.SnapshotIndex,args.Snapshot)
+	  	  kv.InstallSnapShot(args.SnapshotIndex,args.Snapshot)
 	  }
+	  kv.unlock()
    }
 }
 //
@@ -114,7 +141,8 @@ func (kv *KVServer) doExecute()  {
 func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
 	// call labgob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
-	labgob.Register(Op{})
+    labgob.Register(map[string]string{})
+    labgob.Register(Op{})
 
 	kv := new(KVServer)
 	kv.me = me
@@ -126,6 +154,8 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	// You may need initialization code here.
+	kv.chMap=make(map[int]chan ExecuteReply)
+	kv.kvMap=make(map[string]string)
     go kv.doExecute()
 	return kv
 }
