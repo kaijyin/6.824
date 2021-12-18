@@ -20,9 +20,9 @@ func DPrintf(format string, a ...interface{}) (n int, err error) {
 
 
 type Op struct {
-	// Your definitions here.
-	// Field names must start with capital letters,
-	// otherwise RPC will break.
+	Type  uint8 // 0 => get, 1 => put, 2 => append
+	Key   string
+	Value string
 }
 
 type KVServer struct {
@@ -32,11 +32,19 @@ type KVServer struct {
 	applyCh chan raft.ApplyMsg
 	dead    int32 // set by Kill()
 
+	curIndex int
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
+	mmap map[string]string
 }
-
+func (kv *KVServer) lock() {
+	kv.mu.Lock()
+}
+func (kv *KVServer) unlock() {
+	// Your code here.
+	kv.mu.Unlock()
+}
 
 func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
 	// Your code here.
@@ -67,6 +75,28 @@ func (kv *KVServer) killed() bool {
 	return z == 1
 }
 
+func (kv *KVServer) doExecute()  {
+   for !kv.killed(){
+   	  args:=<-kv.applyCh
+   	  if args.CommandValid{
+         if kv.curIndex<args.CommandIndex{
+         	op:=args.Command.(Op)
+         	if op.Type==0{
+         		break
+			}else if op.Type==1{
+
+			}else if op.Type==2{
+
+			}
+         	kv.curIndex=args.CommandIndex
+		 }
+	  }else{
+		  if kv.curIndex<args.SnapshotIndex{
+
+		  }
+	  }
+   }
+}
 //
 // servers[] contains the ports of the set of
 // servers that will cooperate via Raft to
@@ -96,6 +126,6 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	// You may need initialization code here.
-
+    go kv.doExecute()
 	return kv
 }

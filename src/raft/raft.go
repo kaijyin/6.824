@@ -283,7 +283,7 @@ func (rf *Raft) sendMsg(leaderTerm int) bool {
 			reply := AppendReply{}
 			send:=rf.sendAppendLog(i,&args,&reply)
 			if send{
-				rf.receiveAppendReplay(i,&reply)
+				rf.receiveAppendReplay(i,leaderTerm,&reply)
 			}
 		}(i)
 	}
@@ -381,11 +381,11 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	reply.Idx=args.PrevLogIdx+ length
 	reply.Term=rf.term
 }
-func (rf *Raft) receiveAppendReplay(i int,reply *AppendReply){
+func (rf *Raft) receiveAppendReplay(i int,leaderTerm int,reply *AppendReply){
 	rf.lock()
 	defer rf.unlock()
 	//时刻进行状态检查,减少多余的计算
-	if rf.killed()||rf.state_ !=Leader{
+	if rf.killed()||rf.term!=leaderTerm{
 		return
 	}
 	//收到高任期的reply
@@ -466,7 +466,7 @@ func (rf *Raft) election(electionTerm int)  {
 		go func(server int) {
 			reply := RequestVoteReply{0,0}
 			send := rf.sendRequestVote(server, &request, &reply)
-			if send&&rf.receiveVoteReply(&reply){
+			if send&&rf.receiveVoteReply(electionTerm,&reply){
 				atomic.AddInt64(&finish,int64(rf.peerCount))
 			}
 			atomic.AddInt64(&finish,1)
@@ -521,10 +521,10 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	//投票成功,持久化,不然可能出现一个人在一轮给两个人投票的情况
 	rf.persist()
 }
-func (rf *Raft) receiveVoteReply(reply *RequestVoteReply) bool {
+func (rf *Raft) receiveVoteReply(electionTerm int,reply *RequestVoteReply) bool {
 	rf.lock()
 	defer rf.unlock()
-	if rf.killed()||rf.state_ !=Candidate{
+	if rf.killed()||rf.term!=electionTerm{
 		return false
 	}
 	if reply.Term>rf.term {
@@ -573,7 +573,8 @@ func (rf *Raft) BeLeader()  {
 		rf.next_[i]=rf.commit+1
 		rf.match_[i]=0
 	}
-	go rf.heartTicker(rf.term)
+	term:=rf.term
+	go rf.heartTicker(term)
 }
 func (rf *Raft) heartTicker(leaderTerm int)  {
 	if !rf.sendMsg(leaderTerm){
@@ -602,7 +603,8 @@ func (rf *Raft) electionTicker() {
 		sinceLastReceive :=time.Now().Sub(rf.lastReceive).Milliseconds()
 		if sinceLastReceive >= rf.timeOut&&rf.state_!=Leader{
 			rf.BeCandidate()
-			go rf.election(rf.term)
+			term:=rf.term
+			go rf.election(term)
 		}
 		timeOut=rf.timeOut
 		rf.unlock()
