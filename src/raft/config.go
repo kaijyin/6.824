@@ -182,7 +182,7 @@ func (cfg *config) applierSnap(i int, applyCh chan ApplyMsg) {
 	lastApplied := 0
 	for m := range applyCh {
 		if m.SnapshotValid {
-			DPrintf("server:%d  Installsnapshot %v %v\n", i,m.SnapshotIndex, lastApplied)
+			//DPrintf("server:%d  Installsnapshot %v %v\n", i,m.SnapshotIndex, lastApplied)
 			cfg.mu.Lock()
 			if cfg.rafts[i].CondInstallSnapshot(m.SnapshotTerm,
 				m.SnapshotIndex, m.Snapshot) {
@@ -198,7 +198,7 @@ func (cfg *config) applierSnap(i int, applyCh chan ApplyMsg) {
 			}
 			cfg.mu.Unlock()
 		} else if m.CommandValid && m.CommandIndex > lastApplied {
-			DPrintf("server:%d apply %v lastApplied %v\n",i, m.CommandIndex, lastApplied)
+			//DPrintf("server:%d apply %v lastApplied %v\n",i, m.CommandIndex, lastApplied)
 			cfg.mu.Lock()
 			err_msg, prevok := cfg.checkLogs(i, m)
 			cfg.mu.Unlock()
@@ -217,7 +217,7 @@ func (cfg *config) applierSnap(i int, applyCh chan ApplyMsg) {
 				e := labgob.NewEncoder(w)
 				v := m.Command
 				e.Encode(v)
-				DPrintf("server:%d snapshot on index:%d\n",i, m.CommandIndex)
+				//DPrintf("server:%d snapshot on index:%d\n",i, m.CommandIndex)
 				cfg.rafts[i].Snapshot(m.CommandIndex, w.Bytes())
 			}
 		} else {

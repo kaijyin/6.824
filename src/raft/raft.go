@@ -96,7 +96,6 @@ func (rf *Raft) GetFirstLogIdx() int {
 	return rf.logs[0].Idx
 }
 func (rf *Raft) GetLogTerm(idx int) int {
-	DPrintf("%d getLogTerm index%d",rf.me,idx)
 	startIdx:=rf.GetFirstLogIdx()
 	curIdx:=idx-startIdx
 	return rf.logs[curIdx].Term_
@@ -157,25 +156,25 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
    rf.lock()
    defer rf.unlock()
    firstLogIdx:=rf.GetFirstLogIdx()
+   //已经安装过更新版本的快照,放弃当前快照
    if firstLogIdx>=lastIncludedIndex{
-   	  DPrintf("%d install snapshot fail firstIdx:%d lastincluedIdx%d",rf.me,firstLogIdx,lastIncludedIndex)
    	  return false
    }
+   //
    if rf.term<lastIncludedTerm{
    	 rf.BeFlower(lastIncludedTerm)
    }
    if lastIncludedIndex>rf.commit{
    	rf.commit=lastIncludedIndex
    }
-   //len=3 log[7:0]?
+
+   //要保留log的第0位置存在,且idx<=rf.commit
    if lastIncludedIndex>=rf.GetLastLogIdx(){
    	 rf.logs=make([]Log_,0)
    	 rf.logs=append(rf.logs,Log_{Term_: lastIncludedTerm,Idx: lastIncludedIndex})
    }else {
 	   rf.logs = rf.logs[lastIncludedIndex-firstLogIdx:]
    }
-	DPrintf("%d afterInstallSnapshot index:%d commit %d ,firstIdx%d loglen:%d lastidx:%d",rf.me,lastIncludedIndex,
-		rf.commit,rf.GetFirstLogIdx(),rf.GetLogLen(),rf.GetLastLogIdx())
    state:=rf.GetRaftStateData()
    rf.persister.SaveStateAndSnapshot(state,snapshot)
    return true
@@ -188,8 +187,6 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	firstLogIdx:=rf.GetFirstLogIdx()
 	//第一个是不用的,留着
 	rf.logs=rf.logs[index-firstLogIdx:]
-	DPrintf("%d aftersnapshot index:%d commit %d ,firstIdx%d loglen:%d lastidx:%d",rf.me,index,
-		rf.commit,rf.GetFirstLogIdx(),rf.GetLogLen(),rf.GetLastLogIdx())
 	state:=rf.GetRaftStateData()
 	rf.persister.SaveStateAndSnapshot(state,snapshot)
 }
@@ -244,8 +241,9 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	rf.sendMsg(term)
 	return index, term, true
 }
+//发送日志(心跳),如果发生leader term不一致,及时退出
 func (rf *Raft) sendMsg(leaderTerm int) bool {
-	//日志复制不需要等待,只需要在收到回复后统计结果就行,结果只对Leader自身的comit有影响
+	//日志复制不需要等待,只需要在收到回复后统计结果就行,结果只对Leader自身的commit有影响
 	//而Leader选举就需要等待,因为需要统计结果,判断是否能成为Leader,保证一轮只有一个Leader
 	for i:=0;i<rf.peerCount;i++{
 		if i==rf.me {
@@ -268,8 +266,6 @@ func (rf *Raft) sendMsg(leaderTerm int) bool {
 				Snapshot:     snapShot,
 			}
 		}else{
-			DPrintf("%d before send i:%d next[i]-1:%d  commit %d ,firstIdx%d loglen:%d lastidx:%d",rf.me,i,rf.next_[i]-1,
-				rf.commit,rf.GetFirstLogIdx(),rf.GetLogLen(),rf.GetLastLogIdx())
 			entry:=rf.GetFlowerEntries(i)
 			args=AppendArgs{
 				Term:         leaderTerm,
@@ -293,12 +289,12 @@ func (rf *Raft) sendMsg(leaderTerm int) bool {
 	}
 	return true
 }
+
 // 异步提交
-func (rf *Raft) CommitLog(logs []Log_){
+func (rf *Raft) commitLog(logs []Log_){
 	rf.commitMu.Lock()
 	startIdx:=logs[0].Idx
 	endIdx:=logs[len(logs)-1].Idx
-	DPrintf("%d commit log startIdx:%d endIdx:%d",rf.me,startIdx,endIdx)
 	if rf.applied<startIdx{
 		rf.applied=startIdx
 	}
@@ -329,6 +325,7 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	rf.flashRpc()
 	//安装snapshot
 	if args.IsSnapShot{
+		// 异步提交
 		go func() {
 			rf.applyCh<-ApplyMsg{
 				SnapshotValid: true,
@@ -375,7 +372,7 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	//提交日志
 	if args.LeaderCommit>rf.commit{//有可能因为网络延迟没有刷新Flower的RPCtimer,重新选举,原本的Leader的尽管commit更高,但是也成为了Flower
 		rf.commit=args.LeaderCommit
-		go rf.CommitLog(rf.CutLog(rf.commit+1))
+		go rf.commitLog(rf.CutLog(rf.commit+1))
 	}
 	//此时服务机收到复制请求的部分就和Leader是一样的了,只要Leader不更改,并收到大部分复制日志成功的reply后跟新comit,下次再发送日志复制请求自己也跟着跟新comit
 	//repley.idx=rf.len不对,可能Flower的日志比Leader的日志要长,但是前面确实吻合的,这是由于超时后重新选举造成的
@@ -429,7 +426,7 @@ func (rf *Raft) receiveAppendReplay(i int,reply *AppendReply){
 	}
 	if count>rf.peerCount/2 &&rf.commit<reply.Idx{//大部分都已经复制,提交
 		rf.commit=reply.Idx
-		go rf.CommitLog(rf.CutLog(rf.commit+1))
+		go rf.commitLog(rf.CutLog(rf.commit+1))
 	}
 }
 func (rf *Raft) sendAppendLog(server int,args *AppendArgs,reply *AppendReply)bool  {
