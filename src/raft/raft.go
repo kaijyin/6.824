@@ -148,6 +148,8 @@ func (rf *Raft) readPersist(data []byte) {
 	d.Decode(&rf.logs)
 	d.Decode(&rf.voteFor)
 	d.Decode(&rf.term)
+	rf.commit=rf.logs[0].Idx
+	rf.applied=rf.logs[0].Idx
 }
 
 
@@ -156,16 +158,15 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
    defer rf.unlock()
    firstLogIdx:=rf.GetFirstLogIdx()
    if firstLogIdx>=lastIncludedIndex{
+   	  DPrintf("%d install snapshot fail firstIdx:%d lastincluedIdx%d",rf.me,firstLogIdx,lastIncludedIndex)
    	  return false
+   }
+   if rf.term<lastIncludedTerm{
+   	 rf.BeFlower(lastIncludedTerm)
    }
    if lastIncludedIndex>rf.commit{
    	rf.commit=lastIncludedIndex
    }
-   rf.commitMu.Lock()
-   if lastIncludedIndex>rf.applied{
-   	rf.applied=lastIncludedIndex
-   }
-   rf.commitMu.Unlock()
    //len=3 log[7:0]?
    if lastIncludedIndex>=rf.GetLastLogIdx(){
    	 rf.logs=make([]Log_,0)
@@ -297,9 +298,14 @@ func (rf *Raft) CommitLog(logs []Log_){
 	rf.commitMu.Lock()
 	startIdx:=logs[0].Idx
 	endIdx:=logs[len(logs)-1].Idx
+	DPrintf("%d commit log startIdx:%d endIdx:%d",rf.me,startIdx,endIdx)
+	if rf.applied<startIdx{
+		rf.applied=startIdx
+	}
 	for rf.applied<endIdx{
 		rf.applied++
-		rf.applyCh<-ApplyMsg{CommandValid: true, Command:logs[rf.applied-startIdx].Command, CommandIndex: rf.applied}
+		log:=logs[rf.applied-startIdx]
+		rf.applyCh<-ApplyMsg{CommandValid: true, Command:log.Command, CommandIndex: log.Idx}
 	}
 	rf.commitMu.Unlock()
 }
@@ -319,17 +325,18 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	if rf.term <args.Term{
 		rf.BeFlower(args.Term)
 	}
-	//DPrintf("%d recive appendenc from %d in term:%d true",rf.me,args.LeaderId,args.Term)
 	//收到Rpc一定要刷新选举超时时间
 	rf.flashRpc()
 	//安装snapshot
 	if args.IsSnapShot{
-		rf.applyCh<-ApplyMsg{
-			SnapshotValid: true,
-			Snapshot:      args.Snapshot,
-			SnapshotTerm:  args.PrevLogTerm,
-			SnapshotIndex: args.PrevLogIdx,
-		}
+		go func() {
+			rf.applyCh<-ApplyMsg{
+				SnapshotValid: true,
+				Snapshot:      args.Snapshot,
+				SnapshotTerm:  args.PrevLogTerm,
+				SnapshotIndex: args.PrevLogIdx,
+			}
+		}()
 		reply.Idx=args.PrevLogIdx
 		reply.Term=rf.term
 		return
