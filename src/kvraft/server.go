@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type Op struct {
@@ -20,12 +21,12 @@ type KVServer struct {
 	applyCh chan raft.ApplyMsg
 	dead    int32 // set by Kill()
 
-	curIndex int
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
 	kvMap map[string]string
 	chMap map[int]chan ExecuteReply
+	cd  sync.Cond
 }
 func (kv *KVServer) lock() {
 	kv.mu.Lock()
@@ -40,6 +41,7 @@ func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
 	_,index,ok:=kv.rf.Start(Op{
 		RequestArgs: *args,
 		server:      kv.me,
+		time:        time.Now(),
 	})
     if !ok{
     	reply.RequestApplied=false
@@ -112,7 +114,8 @@ func (kv *KVServer) doExecute()  {
 				ch<-reply
 				delete(kv.chMap,index)
 			}
-         	kv.curIndex=args.CommandIndex
+         	kv.curTime=op.time
+         	kv.cd.Broadcast()
          	if len(kv.rf.GetRaftStateData())>=kv.maxraftstate{
          		kv.SnapShot()
 			}
@@ -150,7 +153,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 
 	// You may need initialization code here.
 
-	kv.applyCh = make(chan raft.ApplyMsg)
+	kv.applyCh = make(chan raft.ApplyMsg,20)
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 
 	// You may need initialization code here.

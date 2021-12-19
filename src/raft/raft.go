@@ -104,9 +104,17 @@ func (rf *Raft) GetLogLen() int {
 	return len(rf.logs)
 }
 
-func (rf *Raft) CutLog(idx int)[]Log_{
-	right:= idx -rf.GetFirstLogIdx()
-	return rf.logs[:right]
+func (rf *Raft) CutLog(startIdx int,endIdx int)[]Log_{
+	lastLogIdx:=rf.GetLastLogIdx()
+	if endIdx>lastLogIdx{
+		endIdx=lastLogIdx
+	}
+	if startIdx>endIdx{
+		return nil
+	}
+	start:=startIdx-rf.GetFirstLogIdx()
+	right:= endIdx -rf.GetFirstLogIdx()+1
+	return rf.logs[start:right]
 }
 func (rf *Raft) GetFlowerEntries(server int) []Log_ {
 	curIdx:=rf.next_[server]-rf.GetFirstLogIdx()
@@ -143,15 +151,9 @@ func (rf *Raft) readPersist(data []byte) {
 	}
 	r := bytes.NewBuffer(data)
 	d := labgob.NewDecoder(r)
-	var logs []Log_
-	d.Decode(&logs)
-	rf.logs=logs
-	var voteFor int
-	d.Decode(&voteFor)
-	rf.voteFor=voteFor
-	var term int
-	d.Decode(&term)
-	rf.term=term
+	d.Decode(&rf.logs)
+	d.Decode(&rf.voteFor)
+	d.Decode(&rf.term)
 	rf.commit=rf.logs[0].Idx
 	rf.applied=rf.logs[0].Idx
 }
@@ -161,6 +163,7 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
    rf.lock()
    defer rf.unlock()
    firstLogIdx:=rf.GetFirstLogIdx()
+   lastLogIdx:=rf.GetLastLogIdx()
    //已经安装过更新版本的快照,放弃当前快照
    if firstLogIdx>=lastIncludedIndex{
    	  return false
@@ -170,15 +173,15 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
    	 rf.BeFlower(lastIncludedTerm)
    }
    if lastIncludedIndex>rf.commit{
+   	go rf.applyInvalidLog(rf.CutLog(rf.commit+1,lastIncludedIndex))
    	rf.commit=lastIncludedIndex
    }
-
    //要保留log的第0位置存在,且idx<=rf.commit
-   if lastIncludedIndex>=rf.GetLastLogIdx(){
+   if lastIncludedIndex>=lastLogIdx{
    	 rf.logs=make([]Log_,0)
    	 rf.logs=append(rf.logs,Log_{Term_: lastIncludedTerm,Idx: lastIncludedIndex})
    }else {
-	   rf.logs = rf.logs[lastIncludedIndex-firstLogIdx:]
+	   rf.logs = rf.CutLog(lastIncludedIndex,lastLogIdx)
    }
    state:=rf.GetRaftStateData()
    rf.persister.SaveStateAndSnapshot(state,snapshot)
@@ -313,6 +316,18 @@ func (rf *Raft) commitLog(logs []Log_){
 	}
 	rf.commitMu.Unlock()
 }
+func (rf *Raft)  applyInvalidLog(logs []Log_){
+	if logs==nil|| len(logs)==0{
+		return
+	}
+	start :=logs[0].Idx
+	endIdx:=logs[len(logs)-1].Idx
+	curIdx:=start
+	for curIdx <endIdx{
+		rf.applyCh<-ApplyMsg{Command:logs[curIdx-start].Command, CommandIndex: logs[curIdx-start].Idx}
+		curIdx++
+	}
+}
 func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx表示和Leader日志中一致的位置
 	rf.lock()
 	defer rf.unlock()
@@ -366,7 +381,8 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	length :=len(args.Entries)
 	for ; prevIdx <=lastIdx &&j< length;{
 		if rf.GetLogTerm(prevIdx)!=args.Entries[j].Term_{
-			rf.logs=rf.CutLog(prevIdx)
+			go rf.applyInvalidLog(rf.CutLog(prevIdx,lastIdx))
+			rf.logs=rf.CutLog(firstIdx,prevIdx-1)
 			break
 		}
 		prevIdx++
@@ -380,7 +396,7 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	//提交日志
 	if args.LeaderCommit>rf.commit{//有可能因为网络延迟没有刷新Flower的RPCtimer,重新选举,原本的Leader的尽管commit更高,但是也成为了Flower
 		rf.commit=args.LeaderCommit
-		go rf.commitLog(rf.CutLog(rf.commit+1))
+		go rf.commitLog(rf.CutLog(firstIdx,rf.commit))
 	}
 	//此时服务机收到复制请求的部分就和Leader是一样的了,只要Leader不更改,并收到大部分复制日志成功的reply后跟新comit,下次再发送日志复制请求自己也跟着跟新comit
 	//repley.idx=rf.len不对,可能Flower的日志比Leader的日志要长,但是前面确实吻合的,这是由于超时后重新选举造成的
@@ -434,7 +450,7 @@ func (rf *Raft) receiveAppendReplay(i int,leaderTerm int,reply *AppendReply){
 	}
 	if count>rf.peerCount/2 &&rf.commit<reply.Idx{//大部分都已经复制,提交
 		rf.commit=reply.Idx
-		go rf.commitLog(rf.CutLog(rf.commit+1))
+		go rf.commitLog(rf.CutLog(rf.GetFirstLogIdx(), rf.commit))
 	}
 }
 func (rf *Raft) sendAppendLog(server int,args *AppendArgs,reply *AppendReply)bool  {
@@ -620,6 +636,9 @@ func (rf *Raft) electionTicker() {
 }
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
+	labgob.Register([]Log_{})
+	labgob.Register(Log_{})
+
 	rf := &Raft{}
 	rf.peers = peers
 	rf.persister = persister
