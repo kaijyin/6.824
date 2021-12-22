@@ -12,7 +12,8 @@ import (
 
 type Op struct {
 	RequestArgs
-	server int
+	Server    int
+	StartTime int64
 }
 type KVServer struct {
 	mu      sync.Mutex
@@ -24,10 +25,13 @@ type KVServer struct {
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
-	kvMap map[string]string
-	chMap map[int]chan ExecuteReply
-	cd  sync.Cond
+	curIndex    int
+	kvMap       map[string]string
+	chMap       map[int64]chan ExecuteReply
+	ckLastIndex map[int64]int64
+	ckGetValue  map[int64]string
 }
+
 func (kv *KVServer) lock() {
 	kv.mu.Lock()
 }
@@ -37,25 +41,26 @@ func (kv *KVServer) unlock() {
 }
 
 func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
+	//DPrintf("%d do ck:%d index:%d op:%d", kv.me, args.CkId, args.CkIndex, args.Type)
+	ch := make(chan ExecuteReply)
 	kv.lock()
-	_,index,ok:=kv.rf.Start(Op{
-		RequestArgs: *args,
-		server:      kv.me,
-		time:        time.Now(),
-	})
-    if !ok{
-    	reply.RequestApplied=false
-    	kv.unlock()
-    	return
+	//去除掉以及处理了的请求,小优化,对网络不可信的情况下很常见
+	lastIdx,has:=kv.ckLastIndex[args.CkId]
+	if has&&lastIdx>=args.CkIndex{
+		kv.unlock()
+		return
 	}
-	ch,hasVal:=kv.chMap[index]
-	if hasVal{
-		ch<-ExecuteReply{
-			RequestApplied: false,
-		}
-	}else{
-		ch=make(chan ExecuteReply)
-		kv.chMap[index]=ch
+	curTime := time.Now().UnixNano()
+	kv.chMap[curTime] = ch
+	_, _, ok := kv.rf.Start(Op{
+		RequestArgs: *args,
+		Server:      kv.me,
+		StartTime:   curTime,
+	})
+	if !ok {
+		delete(kv.chMap,curTime)
+		kv.unlock()
+		return
 	}
 	kv.unlock()
 	*reply=<-ch
@@ -81,52 +86,75 @@ func (kv *KVServer) killed() bool {
 	z := atomic.LoadInt32(&kv.dead)
 	return z == 1
 }
-func (kv *KVServer) SnapShot(){
+func (kv *KVServer) SnapShot() {
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
+	e.Encode(kv.curIndex)
 	e.Encode(kv.kvMap)
+	e.Encode(kv.ckLastIndex)
 	//可以开线程去执行snapshot
-	go kv.rf.Snapshot(kv.curIndex,w.Bytes())
+	go kv.rf.Snapshot(kv.curIndex, w.Bytes())
 }
-func (kv *KVServer) InstallSnapShot(snapshotIndex int, snapshot []byte){
+func (kv *KVServer) InstallSnapShot(snapshot []byte) {
 	r := bytes.NewBuffer(snapshot)
 	d := labgob.NewDecoder(r)
+	d.Decode(&kv.curIndex)
 	d.Decode(&kv.kvMap)
-    kv.curIndex=snapshotIndex
+	d.Decode(&kv.ckLastIndex)
 }
-func (kv *KVServer) doExecute()  {
-   for !kv.killed(){
-   	  args:=<-kv.applyCh
-   	  kv.lock()
-   	  if args.CommandValid&&kv.curIndex<args.CommandIndex{
-         	index:=args.CommandIndex
-         	op :=args.Command.(Op)
-			 ch,ok:=kv.chMap[index]
-			 reply:=ExecuteReply{RequestApplied: op.server==kv.me}
-			 if op.Type==Get&&ok&&reply.RequestApplied{
-			 	reply.Value=kv.kvMap[op.Key]
-			}else if op.Type==Put{
-                kv.kvMap[op.Key]= op.Value
-			}else if op.Type==Append{
-                kv.kvMap[op.Key]+= op.Value
+func (kv *KVServer) doExecute() {
+	for !kv.killed() {
+		args := <-kv.applyCh
+		kv.lock()
+		if args.CommandValid {
+			op := args.Command.(Op)
+			ch, ok := kv.chMap[op.StartTime]
+			reply := ExecuteReply{}
+			//由我的实现,通过请求当前server产生的log一定会被放入applyCh,通过commandInvalid来标识是否提交
+			if kv.curIndex < args.CommandIndex {//序列化
+				kv.curIndex = args.CommandIndex
+				//DPrintf("commit ")
+				ck := op.CkId
+				lastIndex, _ := kv.ckLastIndex[op.CkId]
+				if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行
+					kv.ckLastIndex[ck] = op.CkIndex
+					reply.RequestApplied = op.Server == kv.me
+					if op.Type == Gets && ok && reply.RequestApplied {
+						reply.Value = kv.kvMap[op.Key]
+						//DPrintf("execute reply value %s",reply.Value)
+					} else if op.Type == Puts {
+						kv.kvMap[op.Key] = op.Value
+					} else if op.Type == Appends {
+						kv.kvMap[op.Key] += op.Value
+					}
+				}
+				if kv.maxraftstate!=-1&&kv.rf.GetRaftStateSize() >= kv.maxraftstate {
+					kv.SnapShot()
+				}
 			}
-			if ok {
-				ch<-reply
-				delete(kv.chMap,index)
+			//可能kv index之前的并没有被实际执行,而是直接安装snapshot,所以还是需要把等待的请求给去除掉
+			if ok && op.Server==kv.me{
+				DPrintf("%d send reply to :%d index:%d request invalid:%v",kv.me,op.CkId,op.CkIndex,reply.RequestApplied)
+				ch <- reply
+				delete(kv.chMap,op.StartTime)
 			}
-         	kv.curTime=op.time
-         	kv.cd.Broadcast()
-         	if len(kv.rf.GetRaftStateData())>=kv.maxraftstate{
-         		kv.SnapShot()
+		} else if args.SnapshotValid && kv.curIndex < args.SnapshotIndex {
+			// 必须先安装日志,再改具体的kv存储
+			kv.rf.CondInstallSnapshot(args.SnapshotTerm, args.SnapshotIndex, args.Snapshot)
+			kv.InstallSnapShot(args.Snapshot)
+		} else if !args.CommandValid && !args.SnapshotValid { //invalid apply,没有成功提交的请求返回false
+			op := args.Command.(Op)
+			ch, ok := kv.chMap[op.StartTime]
+			if ok &&op.Server==kv.me{
+				//DPrintf("recive uncommited apply ck:%d index:%d",op.CkId,op.CkIndex)
+				ch <- ExecuteReply{RequestApplied: false}
+				delete(kv.chMap, op.StartTime)
 			}
-	  }else if args.SnapshotValid &&kv.curIndex<args.SnapshotIndex{
-	  	// 必须先安装日志,再改具体的kv存储
-	  	  kv.rf.CondInstallSnapshot(args.SnapshotTerm,args.SnapshotIndex,args.Snapshot)
-	  	  kv.InstallSnapShot(args.SnapshotIndex,args.Snapshot)
-	  }
-	  kv.unlock()
-   }
+		}
+		kv.unlock()
+	}
 }
+
 //
 // servers[] contains the ports of the set of
 // servers that will cooperate via Raft to
@@ -144,21 +172,24 @@ func (kv *KVServer) doExecute()  {
 func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister, maxraftstate int) *KVServer {
 	// call labgob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
-    labgob.Register(map[string]string{})
-    labgob.Register(Op{})
+	labgob.Register(map[string]string{})
+	labgob.Register(Op{})
+	labgob.Register(map[int64]int64{})
 
 	kv := new(KVServer)
 	kv.me = me
 	kv.maxraftstate = maxraftstate
 
+	kv.chMap = make(map[int64]chan ExecuteReply)
+	kv.kvMap = make(map[string]string)
+	kv.ckLastIndex = make(map[int64]int64)
 	// You may need initialization code here.
 
-	kv.applyCh = make(chan raft.ApplyMsg,20)
+	kv.applyCh = make(chan raft.ApplyMsg, 20)
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
-
 	// You may need initialization code here.
-	kv.chMap=make(map[int]chan ExecuteReply)
-	kv.kvMap=make(map[string]string)
-    go kv.doExecute()
+
+	kv.InstallSnapShot(persister.ReadSnapshot())
+	go kv.doExecute()
 	return kv
 }
