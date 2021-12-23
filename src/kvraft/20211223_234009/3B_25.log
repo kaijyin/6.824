@@ -1,0 +1,18 @@
+Test: InstallSnapshot RPC (3B) ...
+panic: reflect: Call using kvraft.RequestArgs as type *kvraft.RequestArgs
+
+goroutine 8 [running]:
+reflect.Value.call({0xc000130120, 0xc000108678, 0xc00005bb10}, {0xbd24cd, 0x4}, {0xc00005bc68, 0x3, 0xc00005bb40})
+	D:/ProgramFiles/Go/src/reflect/value.go:411 +0x1965
+reflect.Value.Call({0xc000130120, 0xc000108678, 0xc000074f00}, {0xc00005bc68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc00010d580, {0xbd3a02, 0x2}, {{0xb9e740, 0xc0001077b0}, {0xbd39f9, 0xb}, {0xc213a0, 0xbc12e0}, {0xc0000b6000, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00011a498, {{0xb9e740, 0xc0001077b0}, {0xbd39f9, 0xb}, {0xc213a0, 0xbc12e0}, {0xc0000b6000, 0x5e, 0xa8}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+exit status 2
+FAIL	6.824/kvraft	0.126s
