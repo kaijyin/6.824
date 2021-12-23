@@ -55,9 +55,9 @@ const(
 )
 //设定election时间
 const (
-	electionTimeoutTop  int64 = 200
+	electionTimeoutTop  int64 = 300
 	electionTimeoutDown int64 = 150
-	heartbeatInterval   int64 = 50
+	heartbeatInterval   int64 = 80
 )
 type Log_ struct {
 	Command interface{}
@@ -66,12 +66,12 @@ type Log_ struct {
 }
 
 type Raft struct {
-	mu        sync.Mutex          // Lock to protect shared access to this peer's state
-	commitMu        sync.Mutex
-	peers     []*labrpc.ClientEnd // RPC end points of all peers
-	persister *Persister          // Object to hold this peer's persisted state
-	me        int                 // this peer's index into peers[]
-	dead      int32               // set by Kill()
+	mu          sync.Mutex          // Lock to protect shared access to this peer's state
+	applyMu     sync.Mutex
+	peers       []*labrpc.ClientEnd // RPC end points of all peers
+	persister   *Persister          // Object to hold this peer's persisted state
+	me          int                 // this peer's index into peers[]
+	dead        int32               // set by Kill()
 	applyCh     chan ApplyMsg
 	logs        []Log_
 	voteFor     int
@@ -103,33 +103,32 @@ func (rf *Raft) GetLogTerm(idx int) int {
 func (rf *Raft) GetLogLen() int {
 	return len(rf.logs)
 }
-
-func (rf *Raft) CutLog(startIdx int,endIdx int)[]Log_{
-	lastLogIdx:=rf.GetLastLogIdx()
-	if endIdx>lastLogIdx{
-		endIdx=lastLogIdx
-	}
-	if startIdx>endIdx{
+func (rf *Raft) CutLog(start int,end int)[]Log_{
+	left:=start-rf.GetFirstLogIdx()
+	right:= end -rf.GetFirstLogIdx()+1
+	curlogs:=rf.logs[left:right]
+	return curlogs
+}
+func (rf *Raft) CopyLog(start int,end int)[]Log_{
+	if start>end{
 		return nil
 	}
-	start:=startIdx-rf.GetFirstLogIdx()
-	right:= endIdx -rf.GetFirstLogIdx()+1
-	return rf.logs[start:right]
-}
-func (rf *Raft) GetFlowerEntries(server int) []Log_ {
-	curIdx:=rf.next_[server]-rf.GetFirstLogIdx()
-	return rf.logs[curIdx:]
-}
-func (rf *Raft) GetCommand(idx int)interface{}{
-	curIdx:=idx-rf.GetFirstLogIdx()
-    return rf.logs[curIdx].Command
+	left:=start-rf.GetFirstLogIdx()
+	right:= end -rf.GetFirstLogIdx()+1
+	curlogs:=rf.logs[left:right]
+	logs:=make([]Log_,len(curlogs))
+	copy(logs,curlogs)
+	return logs
 }
 func (rf *Raft) GetState() (int,bool) {
-	rf.mu.Lock()
-	term:=rf.term
-	isLeader:=rf.state_==Leader
-	rf.mu.Unlock()
-	return term,isLeader
+	rf.lock()
+	defer rf.unlock()
+	return rf.term,rf.state_==Leader
+}
+func (rf *Raft) GetRaftStateSize()int{
+	rf.lock()
+	defer rf.unlock()
+	return rf.persister.RaftStateSize()
 }
 func (rf *Raft) GetRaftStateData()[]byte{
 	w := new(bytes.Buffer)
@@ -151,6 +150,9 @@ func (rf *Raft) readPersist(data []byte) {
 	}
 	r := bytes.NewBuffer(data)
 	d := labgob.NewDecoder(r)
+	rf.logs=nil
+	rf.voteFor=0
+	rf.term=0
 	d.Decode(&rf.logs)
 	d.Decode(&rf.voteFor)
 	d.Decode(&rf.term)
@@ -160,38 +162,43 @@ func (rf *Raft) readPersist(data []byte) {
 
 
 func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int, snapshot []byte) bool {
-   rf.lock()
-   defer rf.unlock()
-   firstLogIdx:=rf.GetFirstLogIdx()
-   lastLogIdx:=rf.GetLastLogIdx()
-   //已经安装过更新版本的快照,放弃当前快照
-   if firstLogIdx>=lastIncludedIndex{
-   	  return false
-   }
-   //
-   if rf.term<lastIncludedTerm{
-   	 rf.BeFlower(lastIncludedTerm)
-   }
-   if lastIncludedIndex>rf.commit{
-   	go rf.applyInvalidLog(rf.CutLog(rf.commit+1,lastIncludedIndex))
-   	rf.commit=lastIncludedIndex
-   }
-   //要保留log的第0位置存在,且idx<=rf.commit
-   if lastIncludedIndex>=lastLogIdx{
-   	 rf.logs=make([]Log_,0)
-   	 rf.logs=append(rf.logs,Log_{Term_: lastIncludedTerm,Idx: lastIncludedIndex})
-   }else {
-	   rf.logs = rf.CutLog(lastIncludedIndex,lastLogIdx)
-   }
-   state:=rf.GetRaftStateData()
-   rf.persister.SaveStateAndSnapshot(state,snapshot)
-   return true
+	rf.lock()
+	defer rf.unlock()
+	if rf.killed(){
+		return false
+	}
+	firstLogIdx:=rf.GetFirstLogIdx()
+	//已经安装过更新版本的快照,放弃当前快照
+	if firstLogIdx>=lastIncludedIndex{
+		return false
+	}
+	//
+	if rf.term<lastIncludedTerm{
+		rf.BeFlower(lastIncludedTerm)
+	}
+	if lastIncludedIndex>rf.commit{
+		rf.commit=lastIncludedIndex
+	}
+
+	//要保留log的第0位置存在,且idx<=rf.commit
+	if lastIncludedIndex>=rf.GetLastLogIdx(){
+		rf.logs=nil
+		rf.logs=append(rf.logs,Log_{Term_: lastIncludedTerm,Idx: lastIncludedIndex})
+	}else {
+		rf.logs = rf.logs[lastIncludedIndex-firstLogIdx:]
+	}
+	state:=rf.GetRaftStateData()
+	rf.persister.SaveStateAndSnapshot(state,snapshot)
+	return true
 }
 
 func (rf *Raft) Snapshot(index int, snapshot []byte) {
 	// Your code here (2D).
 	rf.lock()
 	defer rf.unlock()
+	if rf.killed(){
+		return
+	}
 	firstLogIdx:=rf.GetFirstLogIdx()
 	if firstLogIdx>=index{
 		return
@@ -277,7 +284,7 @@ func (rf *Raft) sendMsg(leaderTerm int) bool {
 				Snapshot:     snapShot,
 			}
 		}else{
-			entry:=rf.GetFlowerEntries(i)
+			entry:=rf.CopyLog(rf.next_[i],rf.GetLastLogIdx())
 			args=AppendArgs{
 				Term:         leaderTerm,
 				LeaderId:     rf.me,
@@ -303,7 +310,11 @@ func (rf *Raft) sendMsg(leaderTerm int) bool {
 
 // 异步提交
 func (rf *Raft) commitLog(logs []Log_){
-	rf.commitMu.Lock()
+	rf.applyMu.Lock()
+	if rf.killed(){
+		rf.applyMu.Unlock()
+		return
+	}
 	startIdx:=logs[0].Idx
 	endIdx:=logs[len(logs)-1].Idx
 	if rf.applied<startIdx{
@@ -314,19 +325,7 @@ func (rf *Raft) commitLog(logs []Log_){
 		log:=logs[rf.applied-startIdx]
 		rf.applyCh<-ApplyMsg{CommandValid: true, Command:log.Command, CommandIndex: log.Idx}
 	}
-	rf.commitMu.Unlock()
-}
-func (rf *Raft)  applyInvalidLog(logs []Log_){
-	if logs==nil|| len(logs)==0{
-		return
-	}
-	start :=logs[0].Idx
-	endIdx:=logs[len(logs)-1].Idx
-	curIdx:=start
-	for curIdx <endIdx{
-		rf.applyCh<-ApplyMsg{Command:logs[curIdx-start].Command, CommandIndex: logs[curIdx-start].Idx}
-		curIdx++
-	}
+	rf.applyMu.Unlock()
 }
 func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx表示和Leader日志中一致的位置
 	rf.lock()
@@ -349,14 +348,19 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	//安装snapshot
 	if args.IsSnapShot{
 		// 异步提交
-		go func() {
+		go func(arg AppendArgs) {
+			rf.applyMu.Lock()
+			defer rf.applyMu.Unlock()
+			if rf.killed(){
+				return
+			}
 			rf.applyCh<-ApplyMsg{
 				SnapshotValid: true,
-				Snapshot:      args.Snapshot,
-				SnapshotTerm:  args.PrevLogTerm,
-				SnapshotIndex: args.PrevLogIdx,
+				Snapshot:      arg.Snapshot,
+				SnapshotTerm:  arg.PrevLogTerm,
+				SnapshotIndex: arg.PrevLogIdx,
 			}
-		}()
+		}(*args)
 		reply.Idx=args.PrevLogIdx
 		reply.Term=rf.term
 		return
@@ -381,7 +385,6 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	length :=len(args.Entries)
 	for ; prevIdx <=lastIdx &&j< length;{
 		if rf.GetLogTerm(prevIdx)!=args.Entries[j].Term_{
-			go rf.applyInvalidLog(rf.CutLog(prevIdx,lastIdx))
 			rf.logs=rf.CutLog(firstIdx,prevIdx-1)
 			break
 		}
@@ -450,7 +453,7 @@ func (rf *Raft) receiveAppendReplay(i int,leaderTerm int,reply *AppendReply){
 	}
 	if count>rf.peerCount/2 &&rf.commit<reply.Idx{//大部分都已经复制,提交
 		rf.commit=reply.Idx
-		go rf.commitLog(rf.CutLog(rf.GetFirstLogIdx(), rf.commit))
+		go rf.commitLog(rf.CutLog(rf.GetFirstLogIdx(),rf.commit))
 	}
 }
 func (rf *Raft) sendAppendLog(server int,args *AppendArgs,reply *AppendReply)bool  {
@@ -571,6 +574,8 @@ func (rf *Raft) receiveVoteReply(electionTerm int,reply *RequestVoteReply) bool 
 func (rf *Raft) Kill() {
 	atomic.StoreInt32(&rf.dead, 1)
 	// Your code here, if desired.
+	rf.applyMu.Lock() //make the applych clean
+	rf.applyMu.Unlock()
 }
 
 func (rf *Raft) killed() bool {
@@ -636,9 +641,6 @@ func (rf *Raft) electionTicker() {
 }
 func Make(peers []*labrpc.ClientEnd, me int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
-	labgob.Register([]Log_{})
-	labgob.Register(Log_{})
-
 	rf := &Raft{}
 	rf.peers = peers
 	rf.persister = persister
