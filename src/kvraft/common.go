@@ -13,8 +13,11 @@ type RequestArgs struct {
 	Type  uint8 // 0 => get, 1 => put, 2 => append
 	Key   string
 	Value string
-	CkId  int64
-	CkIndex int64
+	CkId  uint32
+	CkIndex uint32
+}
+func (req *RequestArgs) GetId()uint64  {
+	return (uint64(req.CkId)<<32)+uint64(req.CkIndex)
 }
 
 type ExecuteReply struct {
