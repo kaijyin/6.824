@@ -24,10 +24,10 @@ type KVServer struct {
 
 	maxraftstate int // snapshot if log grows this big
 
+	chMap       sync.Map
 	// Your definitions here.
 	curIndex    int
 	kvMap       map[string]string
-	chMap       map[uint64]chan ExecuteReply
 	ckLastIndex map[uint32]uint32
 }
 
@@ -54,22 +54,19 @@ func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
 		return
 	}
 	id:=args.GetId()
-	kv.chMap[id] = ch
+	kv.chMap.Store(id,ch)
+	defer kv.chMap.Delete(id)
 	_, _, ok := kv.rf.Start(Op{
 		RequestArgs: *args,
 		Server:      kv.me,
 	})
 	if !ok {
-		delete(kv.chMap,id)
 		kv.unlock()
 		return
 	}
 	kv.unlock()
 	select{
 	case <-time.After(time.Second):
-		kv.lock()
-		delete(kv.chMap,id)
-		kv.unlock()
 	case *reply=<-ch://do execute向chenel发送reply之后就删除id的映射
 	}
 }
@@ -102,10 +99,10 @@ func (kv *KVServer) SnapShot() {
 	e.Encode(kv.kvMap)
 	e.Encode(kv.ckLastIndex)
 	//可以开线程去执行snapshot
-	go kv.rf.Snapshot(kv.curIndex, w.Bytes())
+	kv.rf.Snapshot(kv.curIndex, w.Bytes())
 }
 func (kv *KVServer) InstallSnapShot(snapshot []byte) {
-	if snapshot==nil||len(snapshot)==0{
+	if snapshot==nil||len(snapshot)<1{
 		return
 	}
 	r := bytes.NewBuffer(snapshot)
@@ -128,10 +125,9 @@ func (kv *KVServer) doExecute() {
 		if args.CommandValid&&kv.curIndex+1==args.CommandIndex{//序列化
 			kv.curIndex = args.CommandIndex
 			op := args.Command.(Op)
-			ch, ok := kv.chMap[op.GetId()]
+			ch, ok := kv.chMap.Load(op.GetId())
 			reply := ExecuteReply{}
 				kv.curIndex = args.CommandIndex
-				//DPrintf("commit ")
 				ck := op.CkId
 				lastIndex, _ := kv.ckLastIndex[op.CkId]
 				if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行
@@ -150,10 +146,10 @@ func (kv *KVServer) doExecute() {
 				}
 			//可能kv index之前的并没有被实际执行,而是直接安装snapshot,所以还是需要把等待的请求给去除掉
 			if ok && op.Server==kv.me{
-				ch <- reply
-				delete(kv.chMap,op.GetId())
+				ch.(chan ExecuteReply) <- reply
 			}
 		} else if args.SnapshotValid && kv.curIndex < args.SnapshotIndex {
+			kv.curIndex=args.SnapshotIndex
 			// 必须先安装日志,再改具体的kv存储
 			kv.rf.CondInstallSnapshot(args.SnapshotTerm, args.SnapshotIndex, args.Snapshot)
 			kv.InstallSnapShot(args.Snapshot)
@@ -185,7 +181,6 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.me = me
 	kv.maxraftstate = maxraftstate
 
-	kv.chMap = make(map[uint64]chan ExecuteReply)
 	kv.kvMap = make(map[string]string)
 	kv.ckLastIndex = make(map[uint32]uint32)
 	// You may need initialization code here.

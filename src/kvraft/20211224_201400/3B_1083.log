@@ -1,7 +1,0 @@
-Test: unreliable net, restarts, partitions, snapshots, random keys, many clients (3B) ...
-info: wrote history visualization to C:\Users\未来\AppData\Local\Temp\2485671457.html
---- FAIL: TestSnapshotUnreliableRecoverConcurrentPartitionLinearizable3B (65.67s)
-    test_test.go:376: history is not linearizable
-FAIL
-exit status 1
-FAIL	6.824/kvraft	65.714s

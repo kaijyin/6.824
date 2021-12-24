@@ -217,7 +217,7 @@ def run_tests(
                             task_progress.update(tasks[test], description=f"[red]{test}[/red]")
                             results[test]['failed'].add(1)
                         else:
-                            print(f"sucess test {test} - {dest}")
+                            # print(f"sucess test {test} - {dest}")
                             if results[test]['completed'].n == iterations and results[test]['failed'].n == 0:
                                 task_progress.update(tasks[test], description=f"[green]{test}[/green]")
 

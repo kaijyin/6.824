@@ -34,20 +34,21 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck.servers = servers
 	ck.total=int64(len(ck.servers))
 	// You'll have to add code here.
-	ck.me =nrand()
+	ck.me=nrand()
+	DPrintf("ck.me:%d",ck.me)
 	return ck
 }
 func (ck *Clerk) Execute(args *RequestArgs,reply *ExecuteReply){
 	time.Sleep(time.Microsecond)
 	for server:=atomic.LoadInt64(&ck.lastLeader);;server=(server+1)%ck.total{
 		ch:=make(chan ExecuteReply,1)
-		go func(i int64,requestArgs RequestArgs) {
+		go func(i int64) {
 			reply:=ExecuteReply{}
-			ok:=ck.servers[i].Call("KVServer.Do", &requestArgs, &reply)
+			ok:=ck.servers[i].Call("KVServer.Do", args, &reply)
 			if ok {
                ch<-reply
 			}
-		}(server,*args)
+		}(server)
 		select {
 		case <-time.After(time.Second):
 		case *reply=<-ch:

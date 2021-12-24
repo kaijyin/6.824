@@ -322,9 +322,6 @@ func (rf *Raft) commitLog(logs []Log_){
 	for rf.applied<endIdx{
 		rf.applied++
 		log:=logs[rf.applied-startIdx]
-		if rf.applied!=log.Idx{
-			DPrintf("applied index not the same %d %d",rf.applied,log.Idx)
-		}
 		rf.applyCh<-ApplyMsg{CommandValid: true, Command:log.Command, CommandIndex: log.Idx}
 	}
 }
