@@ -690,11 +690,11 @@ func GenericTestSpeed(t *testing.T, part string, maxraftstate int) {
 //	GenericTest(t, "3B", 1, 5, false, true, false, 1000, false)
 //}
 //
-//func TestSnapshotRecoverManyClients3B(t *testing.T) {
-//	// Test: restarts, snapshots, many clients (3B) ...
-//	GenericTest(t, "3B", 20, 5, false, true, false, 1000, false)
-//}
-//
+func TestSnapshotRecoverManyClients3B(t *testing.T) {
+	// Test: restarts, snapshots, many clients (3B) ...
+	GenericTest(t, "3B", 20, 5, false, true, false, 1000, false)
+}
+
 //func TestSnapshotUnreliable3B(t *testing.T) {
 //	// Test: unreliable net, snapshots, many clients (3B) ...
 //	GenericTest(t, "3B", 5, 5, true, false, false, 1000, false)
@@ -710,7 +710,7 @@ func GenericTestSpeed(t *testing.T, part string, maxraftstate int) {
 //	GenericTest(t, "3B", 5, 5, true, true, true, 1000, false)
 //}
 //
-func TestSnapshotUnreliableRecoverConcurrentPartitionLinearizable3B(t *testing.T) {
-	// Test: unreliable net, restarts, partitions, snapshots, random keys, many clients (3B) ...
-	GenericTest(t, "3B", 15, 7, true, true, true, 1000, true)
-}
+//func TestSnapshotUnreliableRecoverConcurrentPartitionLinearizable3B(t *testing.T) {
+//	// Test: unreliable net, restarts, partitions, snapshots, random keys, many clients (3B) ...
+//	GenericTest(t, "3B", 15, 7, true, true, true, 1000, true)
+//}

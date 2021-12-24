@@ -323,7 +323,7 @@ func (rf *Raft) commitLog(logs []Log_){
 		rf.applied++
 		log:=logs[rf.applied-startIdx]
 		if rf.applied!=log.Idx{
-			DPrintf("Idx not compare")
+			DPrintf("applied index not the same %d %d",rf.applied,log.Idx)
 		}
 		rf.applyCh<-ApplyMsg{CommandValid: true, Command:log.Command, CommandIndex: log.Idx}
 	}
@@ -425,13 +425,8 @@ func (rf *Raft) receiveAppendReplay(i int,leaderTerm int,reply *AppendReply){
 	if reply.Term!=rf.term {
 		return
 	}
-	////返回的replyidx不是当前发送的日志,即日志没有复制成功
-	//不能,因为当前leader也可能有上一term中没有提交的正确日志!
-	//if rf.logs[reply.Idx].Term_!=rf.term{
-	//	return
-	//}
+
 	//Flower的reply.Idx以及之前的log已经和Leader相同
-	//DPrintf("%d recive appendenc Reply from %d in term:%d TRUE",rf.me,i,reply.Term)
 	//更新下一次发送的next标记
 	rf.next_[i]=reply.Idx+1
 	rf.match_[i]=rf.next_[i]-1
@@ -554,7 +549,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 func (rf *Raft) receiveVoteReply(electionTerm int,reply *RequestVoteReply) bool {
 	rf.lock()
 	defer rf.unlock()
-	if rf.killed()||rf.term!=electionTerm{
+	if rf.killed()||rf.term!=electionTerm||rf.state_==Leader{//以及成为leader就不再处理,否则会多次修改next!
 		return false
 	}
 	if reply.Term>rf.term {

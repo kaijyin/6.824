@@ -123,10 +123,10 @@ def last_line(file: str) -> str:
 
 # fmt: off
 def run_tests(
-        tests: List[str]=["2C"],
-        sequential: bool = typer.Option(False, '--sequential', '-s', help='Run all test of each group in order'),
+        tests: List[str]=["2C","2D"],
+        sequential: bool = typer.Option(True, '--sequential', '-s', help='Run all test of each group in order'),
         workers: int = typer.Option(20, '--workers', '-p', help='Number of parallel tasks'),
-        iterations: int = typer.Option(500, '--iter', '-n', help='Number of iterations to run'),
+        iterations: int = typer.Option(1000, '--iter', '-n', help='Number of iterations to run'),
         output: Optional[Path] = typer.Option(None, '--output', '-o', help='Output path to use'),
 
 

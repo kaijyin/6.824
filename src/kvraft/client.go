@@ -38,6 +38,7 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	return ck
 }
 func (ck *Clerk) Execute(args *RequestArgs,reply *ExecuteReply){
+	time.Sleep(time.Microsecond)
 	for server:=atomic.LoadInt64(&ck.lastLeader);;server=(server+1)%ck.total{
 		ch:=make(chan ExecuteReply,1)
 		go func(i int64,requestArgs RequestArgs) {
