@@ -1,0 +1,336 @@
+Test: InstallSnapshot RPC (3B) ...
+  ... Passed --   3.9  3  1693   63
+Test: snapshot size is reasonable (3B) ...
+  ... Passed --   8.2  3  4873  800
+Test: ops complete fast enough (3B) ...
+  ... Passed --   9.5  3  5011    0
+Test: restarts, snapshots, one client (3B) ...
+  ... Passed --  20.3  5 13482 1750
+Test: restarts, snapshots, many clients (3B) ...
+panic: test timed out after 10m0s
+
+goroutine 21685378 [running]:
+testing.(*M).startAlarm.func1()
+	D:/ProgramFiles/Go/src/testing/testing.go:1788 +0x8e
+created by time.goFunc
+	D:/ProgramFiles/Go/src/time/sleep.go:180 +0x31
+
+goroutine 1 [chan receive, 9 minutes]:
+testing.(*T).Run(0xc0001304e0, {0xdcb990, 0xc6c253}, 0xdd9278)
+	D:/ProgramFiles/Go/src/testing/testing.go:1307 +0x375
+testing.runTests.func1(0xc0001304e0)
+	D:/ProgramFiles/Go/src/testing/testing.go:1598 +0x6e
+testing.tRunner(0xc0001304e0, 0xc00007dd18)
+	D:/ProgramFiles/Go/src/testing/testing.go:1259 +0x102
+testing.runTests(0xc000138000, {0xf24300, 0x17, 0x17}, {0xc8d42d, 0xdc5961, 0xf27d80})
+	D:/ProgramFiles/Go/src/testing/testing.go:1596 +0x43f
+testing.(*M).Run(0xc000138000)
+	D:/ProgramFiles/Go/src/testing/testing.go:1504 +0x51d
+main.main()
+	_testmain.go:87 +0x14b
+
+goroutine 90465 [chan receive, 9 minutes]:
+6.824/kvraft.GenericTest(0xc0002ea000, {0xdc3258, 0x2}, 0x14, 0x5, 0x0, 0x1, 0x0, 0x3e8, 0x0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:334 +0xf88
+6.824/kvraft.TestSnapshotRecoverManyClients3B(0xc00043ad00)
+	D:/Go/src/6.824/src/kvraft/test_test.go:695 +0x45
+testing.tRunner(0xc0002ea000, 0xdd9278)
+	D:/ProgramFiles/Go/src/testing/testing.go:1259 +0x102
+created by testing.(*T).Run
+	D:/ProgramFiles/Go/src/testing/testing.go:1306 +0x35a
+
+goroutine 90637 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0xf, 0xc00000c4e0, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xc0005382a0, 0xc000148600, 0xc000405fd0, 0xd5b20d, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90628 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0x6, 0xc0001cf200, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xc000056780, 0xc000148600, 0x120, 0xc000056660, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 225643 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc0000b7e00)
+	D:/Go/src/6.824/src/kvraft/server.go:123 +0x70
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:198 +0x207
+
+goroutine 90630 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0x8, 0xc0001cf440, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xc0005a85a0, 0xc000148600, 0x120, 0xc0004be300, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90638 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0x10, 0xc00000c540, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xa9, 0xc000148600, 0x0, 0x0, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90621 [chan receive, 9 minutes]:
+6.824/kvraft.spawn_clients_and_wait(0xc0002ea000, 0xc000148600, 0x14, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:117 +0x185
+created by 6.824/kvraft.GenericTest
+	D:/Go/src/6.824/src/kvraft/test_test.go:253 +0x6bd
+
+goroutine 90640 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0x12, 0xc00000c5d0, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0x0, 0xc000148600, 0x0, 0x0, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 225637 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc0000b7ae0)
+	D:/Go/src/6.824/src/kvraft/server.go:123 +0x70
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:198 +0x207
+
+goroutine 90634 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0xc, 0xc00000c450, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0x0, 0xc000148600, 0xc000407fd0, 0xd74086, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90639 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0x11, 0xc00000c5a0, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xc000538480, 0xc000148600, 0xc000080600, 0x9, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 225640 [sleep]:
+time.Sleep(0x9a7ec80)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014a1e0)
+	D:/Go/src/6.824/src/raft/raft.go:622 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:664 +0x2a7
+
+goroutine 90636 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0xe, 0xc00000c4b0, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xc0002d0840, 0xc000148600, 0x28a, 0xc0003347e0, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90635 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0xd, 0xc00000c480, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xc00014a690, 0xc000148600, 0xc00013c400, 0xae6, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90629 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0x7, 0xc0001cf320, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xdccd66, 0xc000148600, 0x0, 0x0, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90631 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0x9, 0xc0001cf560, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xd5bc52, 0xc000148600, 0xc0000419e0, 0xc, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90633 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0xb, 0xc00000c420, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xc0002d0840, 0xc000148600, 0x28a, 0xc0003345a0, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90641 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0x13, 0xc0001cea20, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0x0, 0xc000148600, 0xd9f300, 0xc0002bf9b0, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90632 [chan send, 9 minutes]:
+6.824/kvraft.GenericTest.func1.1()
+	D:/Go/src/6.824/src/kvraft/test_test.go:256 +0x3f
+6.824/kvraft.GenericTest.func1(0xa, 0xc00000c3c0, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:291 +0x5f9
+6.824/kvraft.run_client(0xc0005b6e80, 0xc000148600, 0xc000409fd0, 0xd5b20d, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 90627 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000500880, 0xc000049c80, 0xc000049c68)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x219
+6.824/kvraft.(*Clerk).Append(0x7, {0xdccd6b, 0xc000049d50}, {0xc0005e9e88, 0x16c370352ee00184})
+	D:/Go/src/6.824/src/kvraft/client.go:103 +0x150
+6.824/kvraft.Append(0xc000148600, 0x2, {0xdccd6b, 0x1}, {0xc0005e9e88, 0x7}, 0xc0004b6820, 0x5)
+	D:/Go/src/6.824/src/kvraft/test_test.go:77 +0xd5
+6.824/kvraft.GenericTest.func1(0x5, 0xc0001cf0e0, 0xc0002ea000)
+	D:/Go/src/6.824/src/kvraft/test_test.go:272 +0x587
+6.824/kvraft.run_client(0xc00014a2d0, 0xc000148600, 0xc00066c000, 0xb37, 0xc000054ff0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 225638 [sleep]:
+time.Sleep(0xbfb0440)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014a0f0)
+	D:/Go/src/6.824/src/raft/raft.go:622 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:664 +0x2a7
+
+goroutine 90610 [select]:
+6.824/labrpc.MakeNetwork.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:153 +0xbe
+created by 6.824/labrpc.MakeNetwork
+	D:/Go/src/6.824/src/labrpc/labrpc.go:151 +0x17b
+
+goroutine 258720 [sleep]:
+time.Sleep(0x4c4b400)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).heartTicker(0xc00014a2d0, 0xc000054c30)
+	D:/Go/src/6.824/src/raft/raft.go:610 +0x4f
+created by 6.824/raft.(*Raft).BeLeader
+	D:/Go/src/6.824/src/raft/raft.go:602 +0xcf
+
+goroutine 225641 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc0000b7d10)
+	D:/Go/src/6.824/src/kvraft/server.go:123 +0x70
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:198 +0x207
+
+goroutine 225644 [sleep]:
+time.Sleep(0x11c31e80)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014a870)
+	D:/Go/src/6.824/src/raft/raft.go:622 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:664 +0x2a7
+
+goroutine 21685342 [runnable]:
+encoding/gob.(*Decoder).getDecEnginePtr(0xc000609280, 0xda35a0, 0xc000050500)
+	D:/ProgramFiles/Go/src/encoding/gob/decode.go:1146 +0x10c
+encoding/gob.(*Decoder).decOpFor(0xc000609280, 0xe12400, {0xe12400, 0xda35a0}, {0xd7e65e, 0xa}, 0x0)
+	D:/ProgramFiles/Go/src/encoding/gob/decode.go:854 +0x52d
+encoding/gob.(*Decoder).compileDec(0xc000609280, 0x8c27b0, 0xc0000507c0)
+	D:/ProgramFiles/Go/src/encoding/gob/decode.go:1128 +0x6e8
+encoding/gob.(*Decoder).getDecEnginePtr(0xc000609280, 0xda9920, 0xc0000507c0)
+	D:/ProgramFiles/Go/src/encoding/gob/decode.go:1147 +0x145
+encoding/gob.(*Decoder).decOpFor(0xc000609280, 0xe12400, {0xe12400, 0xda8ae0}, {0xd7c2ba, 0x6}, 0x0)
+	D:/ProgramFiles/Go/src/encoding/gob/decode.go:854 +0x52d
+encoding/gob.(*Decoder).compileDec(0xc000609280, 0x8c2780, 0xc0000514c0)
+	D:/ProgramFiles/Go/src/encoding/gob/decode.go:1128 +0x6e8
+encoding/gob.(*Decoder).getDecEnginePtr(0xc000609280, 0xd97640, 0xc0000514c0)
+	D:/ProgramFiles/Go/src/encoding/gob/decode.go:1147 +0x145
+encoding/gob.(*Decoder).decodeValue(0xc000609280, 0xea5c78, {0xd97640, 0xc000999440, 0xc000609298})
+	D:/ProgramFiles/Go/src/encoding/gob/decode.go:1192 +0xf3
+encoding/gob.(*Decoder).recvType(0xc000609280, 0x42)
+	D:/ProgramFiles/Go/src/encoding/gob/decoder.go:67 +0x13c
+encoding/gob.(*Decoder).decodeTypeSequence(0xc000609280, 0x0)
+	D:/ProgramFiles/Go/src/encoding/gob/decoder.go:154 +0x6d
+encoding/gob.(*Decoder).DecodeValue(0xc000609280, {0xd87480, 0xc000f213b0, 0xc000ea5d70})
+	D:/ProgramFiles/Go/src/encoding/gob/decoder.go:214 +0x18f
+encoding/gob.(*Decoder).Decode(0xc000609280, {0xd87480, 0xc000f213b0})
+	D:/ProgramFiles/Go/src/encoding/gob/decoder.go:191 +0x137
+6.824/labgob.(*LabDecoder).Decode(0xc000ea5e00, {0xd87480, 0xc000f213b0})
+	D:/Go/src/6.824/src/labgob/labgob.go:55 +0x54
+6.824/labrpc.(*ClientEnd).Call(0xc0004b6e40, {0xdc49f9, 0xc000ea5fa0}, {0xd97340, 0xc0008c2180}, {0xd87480, 0xc000f213b0})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:116 +0x326
+6.824/kvraft.(*Clerk).Execute.func1(0x2, {0x3, {0xdccd6b, 0x1}, {0xc0005e9e88, 0x7}, 0x29e2e405, 0x2})
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11f
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b2
+
+goroutine 225639 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc0000b7c20)
+	D:/Go/src/6.824/src/kvraft/server.go:123 +0x70
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:198 +0x207
+
+goroutine 258617 [sleep]:
+time.Sleep(0x4c4b400)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).heartTicker(0xc00014a2d0, 0xc000054c30)
+	D:/Go/src/6.824/src/raft/raft.go:610 +0x4f
+created by 6.824/raft.(*Raft).BeLeader
+	D:/Go/src/6.824/src/raft/raft.go:602 +0xcf
+
+goroutine 258694 [sleep]:
+time.Sleep(0x4c4b400)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).heartTicker(0xc00014a2d0, 0xc000054c30)
+	D:/Go/src/6.824/src/raft/raft.go:610 +0x4f
+created by 6.824/raft.(*Raft).BeLeader
+	D:/Go/src/6.824/src/raft/raft.go:602 +0xcf
+
+goroutine 225642 [sleep]:
+time.Sleep(0x9d5b340)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014a2d0)
+	D:/Go/src/6.824/src/raft/raft.go:622 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:664 +0x2a7
+
+goroutine 225636 [sleep]:
+time.Sleep(0xb162280)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014a000)
+	D:/Go/src/6.824/src/raft/raft.go:622 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:664 +0x2a7
+
+goroutine 225645 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc0000b7ea0)
+	D:/Go/src/6.824/src/kvraft/server.go:123 +0x70
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:198 +0x207
+exit status 2
+FAIL	6.824/kvraft	600.082s

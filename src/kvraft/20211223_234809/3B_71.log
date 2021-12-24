@@ -1,0 +1,34 @@
+Test: InstallSnapshot RPC (3B) ...
+  ... Passed --   4.7  3  2360   63
+Test: snapshot size is reasonable (3B) ...
+  ... Passed --   5.6  3  4323  800
+Test: ops complete fast enough (3B) ...
+  ... Passed --   6.9  3  4949    0
+Test: restarts, snapshots, one client (3B) ...
+  ... Passed --  20.3  5 18719 2477
+Test: restarts, snapshots, many clients (3B) ...
+panic: runtime error: slice bounds out of range [824637389674:16]
+
+goroutine 188604 [running]:
+6.824/raft.(*Raft).getFlowerEntries(...)
+	D:/Go/src/6.824/src/raft/raft.go:115
+6.824/raft.(*Raft).sendMsg(0xc00014c0f0, 0x2)
+	D:/Go/src/6.824/src/raft/raft.go:283 +0x4f0
+6.824/raft.(*Raft).Start(0xc00014c0f0, {0xb82e20, 0xc00070eec0})
+	D:/Go/src/6.824/src/raft/raft.go:255 +0x1bc
+6.824/kvraft.(*KVServer).Do(0xc000b159a0, 0xc00064b770, 0xc0007003c0)
+	D:/Go/src/6.824/src/kvraft/server.go:61 +0x265
+reflect.Value.call({0xc000052180, 0xc00060c7e8, 0xc0003fdb10}, {0xba34cd, 0x4}, {0xc0003fdc68, 0x3, 0xc0003fdb40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc00060c7e8, 0xc00033bb20}, {0xc0003fdc68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000193c00, {0xba4a02, 0x2}, {{0xb6f740, 0xc0002a1ab0}, {0xba49f9, 0xb}, {0xbf2400, 0xb77340}, {0xc00067e210, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc0009f2fd8, {{0xb6f740, 0xc0002a1ab0}, {0xba49f9, 0xb}, {0xbf2400, 0xb77340}, {0xc00067e210, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+exit status 2
+FAIL	6.824/kvraft	45.173s

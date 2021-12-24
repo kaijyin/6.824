@@ -1,0 +1,4 @@
+Test (2D): snapshots basic ...
+2021/12/24 10:02:05 decode error
+exit status 1
+FAIL	6.824/raft	0.812s

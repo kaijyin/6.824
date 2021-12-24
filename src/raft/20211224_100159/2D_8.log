@@ -1,0 +1,4 @@
+Test (2D): snapshots basic ...
+2021/12/24 10:02:08 apply error: server 0 apply out of order 3
+exit status 1
+FAIL	6.824/raft	0.849s

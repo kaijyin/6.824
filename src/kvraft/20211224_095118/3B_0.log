@@ -1,0 +1,1012 @@
+Test: restarts, snapshots, many clients (3B) ...
+panic: test timed out after 10m0s
+
+goroutine 518191 [running]:
+testing.(*M).startAlarm.func1()
+	D:/ProgramFiles/Go/src/testing/testing.go:1788 +0x8e
+created by time.goFunc
+	D:/ProgramFiles/Go/src/time/sleep.go:180 +0x31
+
+goroutine 1 [chan receive, 9 minutes]:
+testing.(*T).Run(0xc0001304e0, {0xcdabb1, 0xb7c253}, 0xce83e0)
+	D:/ProgramFiles/Go/src/testing/testing.go:1307 +0x375
+testing.runTests.func1(0xc0001304e0)
+	D:/ProgramFiles/Go/src/testing/testing.go:1598 +0x6e
+testing.tRunner(0xc0001304e0, 0xc00007dd18)
+	D:/ProgramFiles/Go/src/testing/testing.go:1259 +0x102
+testing.runTests(0xc000138000, {0xe32c00, 0xf, 0xf}, {0xb9d42d, 0xcd4c2b, 0xe36cc0})
+	D:/ProgramFiles/Go/src/testing/testing.go:1596 +0x43f
+testing.(*M).Run(0xc000138000)
+	D:/ProgramFiles/Go/src/testing/testing.go:1504 +0x51d
+main.main()
+	_testmain.go:71 +0x14b
+
+goroutine 6 [chan receive, 9 minutes]:
+6.824/kvraft.GenericTest(0xc000130680, {0xcd252f, 0x2}, 0x14, 0x5, 0x0, 0x1, 0x0, 0x3e8, 0x0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:334 +0xf88
+6.824/kvraft.TestSnapshotRecoverManyClients3B(0x0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:695 +0x45
+testing.tRunner(0xc000130680, 0xce83e0)
+	D:/ProgramFiles/Go/src/testing/testing.go:1259 +0x102
+created by testing.(*T).Run
+	D:/ProgramFiles/Go/src/testing/testing.go:1306 +0x35a
+
+goroutine 7 [select]:
+6.824/labrpc.MakeNetwork.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:153 +0xbe
+created by 6.824/labrpc.MakeNetwork
+	D:/Go/src/6.824/src/labrpc/labrpc.go:151 +0x17b
+
+goroutine 517494 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045640, {0xcd3cce, 0xc00049df98}, {0xca6460, 0xc00054d4a0}, {0xc96540, 0xc000286360})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x0, {0x1, {0xce0eff, 0x2}, {0x0, 0x0}, 0x1e27926c, 0x18}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 19 [chan receive, 9 minutes]:
+6.824/kvraft.spawn_clients_and_wait(0xc000130680, 0xc00014a000, 0x14, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:117 +0x185
+created by 6.824/kvraft.GenericTest
+	D:/Go/src/6.824/src/kvraft/test_test.go:253 +0x6bd
+
+goroutine 20 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc0001642c0, 0xc000169c80, 0xc000169c68)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Append(0x8, {0xcdbf87, 0xc000169d50}, {0xc00086ab18, 0xc000169d08})
+	D:/Go/src/6.824/src/kvraft/client.go:103 +0x150
+6.824/kvraft.Append(0xc00014a000, 0x2, {0xcdbf87, 0x1}, {0xc00086ab18, 0x8}, 0xc000044c00, 0x0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:77 +0xd5
+6.824/kvraft.GenericTest.func1(0x0, 0xc00000cf90, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:272 +0x587
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 21 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164300, 0xc00016bc70, 0xc00016bc58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc00016bcd8, {0xcdbf88, 0x8})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xcdbf88, 0x1}, 0xc000044c00, 0x1)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0x1, 0xc00000d0b0, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 22 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164340, 0xc000185c80, 0xc000185c68)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Append(0x8, {0xcdbf89, 0xc000185d50}, {0xc0001f5f40, 0xc000563980})
+	D:/Go/src/6.824/src/kvraft/client.go:103 +0x150
+6.824/kvraft.Append(0xc00014a000, 0x2, {0xcdbf89, 0x1}, {0xc0001f5f40, 0x8}, 0xc000044c00, 0x2)
+	D:/Go/src/6.824/src/kvraft/test_test.go:77 +0xd5
+6.824/kvraft.GenericTest.func1(0x2, 0xc00000d1d0, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:272 +0x587
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 23 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164380, 0xc000187c70, 0xc000187c58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc000187cd8, {0xcdbf8a, 0x8})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xcdbf8a, 0x1}, 0xc000044c00, 0x3)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0x3, 0xc00000d2f0, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 24 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc0001643c0, 0xc000181c80, 0xc000181c68)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Append(0x8, {0xcdbf8b, 0xc000181d50}, {0xc00032e208, 0xc000181d08})
+	D:/Go/src/6.824/src/kvraft/client.go:103 +0x150
+6.824/kvraft.Append(0xc00014a000, 0x2, {0xcdbf8b, 0x1}, {0xc00032e208, 0x8}, 0xc000044c00, 0x4)
+	D:/Go/src/6.824/src/kvraft/test_test.go:77 +0xd5
+6.824/kvraft.GenericTest.func1(0x4, 0xc00000d410, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:272 +0x587
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 25 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164400, 0xc000183c80, 0xc000183c68)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Append(0x8, {0xcdbf8c, 0xc000183d50}, {0xc0004a3d00, 0xc0001d9fd0})
+	D:/Go/src/6.824/src/kvraft/client.go:103 +0x150
+6.824/kvraft.Append(0xc00014a000, 0x2, {0xcdbf8c, 0x1}, {0xc0004a3d00, 0x8}, 0xc000044c00, 0x5)
+	D:/Go/src/6.824/src/kvraft/test_test.go:77 +0xd5
+6.824/kvraft.GenericTest.func1(0x5, 0xc00000d530, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:272 +0x587
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 26 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164440, 0xc00018dc70, 0xc00018dc58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc00018dcd8, {0xcdbf8d, 0x8})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xcdbf8d, 0x1}, 0xc000044c00, 0x6)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0x6, 0xc00000d650, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 27 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164480, 0xc00018fc80, 0xc00018fc68)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Append(0x8, {0xcdbf8e, 0xc00018fd50}, {0xc0007d8138, 0xc00018fd08})
+	D:/Go/src/6.824/src/kvraft/client.go:103 +0x150
+6.824/kvraft.Append(0xc00014a000, 0x2, {0xcdbf8e, 0x1}, {0xc0007d8138, 0x8}, 0xc000044c00, 0x7)
+	D:/Go/src/6.824/src/kvraft/test_test.go:77 +0xd5
+6.824/kvraft.GenericTest.func1(0x7, 0xc00000d770, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:272 +0x587
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 28 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc0001644c0, 0xc000189c80, 0xc000189c68)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Append(0x7, {0xcdbf8f, 0xc000189d50}, {0xc00076c0d8, 0xc000189d08})
+	D:/Go/src/6.824/src/kvraft/client.go:103 +0x150
+6.824/kvraft.Append(0xc00014a000, 0x2, {0xcdbf8f, 0x1}, {0xc00076c0d8, 0x7}, 0xc000044c00, 0x8)
+	D:/Go/src/6.824/src/kvraft/test_test.go:77 +0xd5
+6.824/kvraft.GenericTest.func1(0x8, 0xc00000d890, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:272 +0x587
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 29 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164500, 0xc00018bc70, 0xc00018bc58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc00018bcd8, {0xcdbf90, 0x8})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xcdbf90, 0x1}, 0xc000044c00, 0x9)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0x9, 0xc00000d9b0, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 30 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164540, 0xc000195c70, 0xc000195c58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc000195cd8, {0xce0efd, 0x9})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xce0efd, 0x2}, 0xc000044c00, 0xa)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0xa, 0xc00000dad0, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 31 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164580, 0xc000197c70, 0xc000197c58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc000197cd8, {0xce0eff, 0x9})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xce0eff, 0x2}, 0xc000044c00, 0xb)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0xb, 0xc00000dbf0, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 32 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc0001645c0, 0xc000191c70, 0xc000191c58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc000191cd8, {0xce0f01, 0x9})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xce0f01, 0x2}, 0xc000044c00, 0xc)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0xc, 0xc00000dd10, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 33 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164600, 0xc000193c70, 0xc000193c58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc000193cd8, {0xce0f03, 0x9})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xce0f03, 0x2}, 0xc000044c00, 0xd)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0xd, 0xc00000de30, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 34 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164640, 0xc00019dc70, 0xc00019dc58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc00019dcd8, {0xce0f05, 0x8})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xce0f05, 0x2}, 0xc000044c00, 0xe)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0xe, 0xc00000df50, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 35 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164680, 0xc00019fc70, 0xc00019fc58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc00019fcd8, {0xce0f07, 0x9})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xce0f07, 0x2}, 0xc000044c00, 0xf)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0xf, 0xc0001c8090, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 36 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc0001646c0, 0xc000199c70, 0xc000199c58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc000199cd8, {0xce0f09, 0x9})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xce0f09, 0x2}, 0xc000044c00, 0x10)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0x10, 0xc0001c81b0, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 37 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164700, 0xc00019bc70, 0xc00019bc58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc00019bcd8, {0xce0f0b, 0x8})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xce0f0b, 0x2}, 0xc000044c00, 0x11)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0x11, 0xc0001c82d0, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 38 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164740, 0xc0001a5c70, 0xc0001a5c58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc0001a5cd8, {0xce0f0d, 0x9})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xce0f0d, 0x2}, 0xc000044c00, 0x12)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0x12, 0xc0001c83f0, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 39 [select]:
+6.824/kvraft.(*Clerk).Execute(0xc000164240, 0xc0001a7c70, 0xc0001a7c58)
+	D:/Go/src/6.824/src/kvraft/client.go:52 +0x21a
+6.824/kvraft.(*Clerk).Get(0xc0001a7cd8, {0xce0f0f, 0x9})
+	D:/Go/src/6.824/src/kvraft/client.go:74 +0x127
+6.824/kvraft.Get(0xc00014a000, 0x2, {0xce0f0f, 0x2}, 0xc000044c00, 0x13)
+	D:/Go/src/6.824/src/kvraft/test_test.go:43 +0xbb
+6.824/kvraft.GenericTest.func1(0x13, 0xc00000ce70, 0xc000130680)
+	D:/Go/src/6.824/src/kvraft/test_test.go:284 +0x3e5
+6.824/kvraft.run_client(0x0, 0xc00014a000, 0x0, 0x0, 0xc000054550)
+	D:/Go/src/6.824/src/kvraft/test_test.go:103 +0xe4
+created by 6.824/kvraft.spawn_clients_and_wait
+	D:/Go/src/6.824/src/kvraft/test_test.go:113 +0x51
+
+goroutine 517685 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc0000454c0, {0xcd3cce, 0xc0003a6060}, {0xca6460, 0xc0002be240}, {0xc96540, 0xc00024ff20})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x0, {0x1, {0xcdbf90, 0x1}, {0x0, 0x0}, 0x3f1e8c0, 0x1c}, 0x0)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 21758 [sleep]:
+time.Sleep(0xb06e040)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014c690)
+	D:/Go/src/6.824/src/raft/raft.go:630 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:672 +0x2a7
+
+goroutine 517958 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc000258bd0, 0xc0004cf4e8)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0005bbb10}, {0xcd27a2, 0x4}, {0xc0005bbc68, 0x3, 0xc0005bbb40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0003d8a68}, {0xc0005bbc68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170930}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558160, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170930}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558160, 0x65, 0xaf}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517990 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc00054dd70, 0xc00082e030)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0002a5b10}, {0xcd27a2, 0x4}, {0xc0002a5c68, 0x3, 0xc0002a5b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc00047f190}, {0xc0002a5c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170ed0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e6160, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170ed0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e6160, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 518277 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000171290}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c420, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 21763 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc000274730)
+	D:/Go/src/6.824/src/kvraft/server.go:125 +0x70
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:201 +0x207
+
+goroutine 517809 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc00078db00, 0xc00042cc30)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0003c7b10}, {0xcd27a2, 0x4}, {0xc0003c7c68, 0x3, 0xc0003c7b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0002ddfb0}, {0xc0003c7c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170570}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e74a0, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170570}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e74a0, 0x65, 0xaf}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517670 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc0007cf890, 0xc0000050b0)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc000677b10}, {0xcd27a2, 0x4}, {0xc000677c68, 0x3, 0xc000677b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0006eb708}, {0xc000677c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170750}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558580, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170750}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558580, 0x65, 0xaf}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517614 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045040, {0xcd3cce, 0x0}, {0xca6460, 0xc0001dad80}, {0xc96540, 0xc00043c978})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x2, {0x1, {0xcdbf8a, 0x1}, {0x0, 0x0}, 0xef4e1d80, 0x1b}, 0x0)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517495 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170fc0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558000, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 21793 [sleep]:
+time.Sleep(0x4c4b400)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).heartTicker(0xc00014c690, 0xc000054190)
+	D:/Go/src/6.824/src/raft/raft.go:618 +0x4f
+created by 6.824/raft.(*Raft).BeLeader
+	D:/Go/src/6.824/src/raft/raft.go:610 +0xcf
+
+goroutine 21762 [sleep]:
+time.Sleep(0xb80f240)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014c870)
+	D:/Go/src/6.824/src/raft/raft.go:630 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:672 +0x2a7
+
+goroutine 517751 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170660}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057d290, 0x5b, 0xa5}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 21755 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc0002744b0)
+	D:/Go/src/6.824/src/kvraft/server.go:125 +0x70
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:201 +0x207
+
+goroutine 517937 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170b10}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c000, 0x5b, 0xa5}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517590 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045ac0, {0xcd3cce, 0x0}, {0xca6460, 0xc0007e95c0}, {0xc96540, 0xc000337c20})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x2, {0x1, {0xce0f0b, 0x2}, {0x0, 0x0}, 0x60536b81, 0x16}, 0x0)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517578 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170cf0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c840, 0x64, 0xae}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517772 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc000359110, 0xc000341620)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0001e3b10}, {0xcd27a2, 0x4}, {0xc0001e3c68, 0x3, 0xc0001e3b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0002dd300}, {0xc0001e3c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000171470}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e7080, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000171470}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e7080, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 21790 [sleep]:
+time.Sleep(0x4c4b400)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).heartTicker(0xc00014c690, 0xc000054190)
+	D:/Go/src/6.824/src/raft/raft.go:618 +0x4f
+created by 6.824/raft.(*Raft).BeLeader
+	D:/Go/src/6.824/src/raft/raft.go:610 +0xcf
+
+goroutine 21760 [sleep]:
+time.Sleep(0x10cefa80)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014c780)
+	D:/Go/src/6.824/src/raft/raft.go:630 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:672 +0x2a7
+
+goroutine 517669 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170750}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558580, 0x65, 0xaf}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517579 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc00098e210, 0xc000089428)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc000673b10}, {0xcd27a2, 0x4}, {0xc000673c68, 0x3, 0xc000673b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc00008fc70}, {0xc000673c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170cf0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c840, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170cf0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c840, 0x64, 0xae}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517528 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc0008229c0, 0xc0003f0390)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0000c3b10}, {0xcd27a2, 0x4}, {0xc0000c3c68, 0x3, 0xc0000c3b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0001fa248}, {0xc0000c3c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000171650}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000526000, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000171650}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000526000, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517771 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000171470}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e7080, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517817 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170480}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558d10, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517591 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000171560}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e6580, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517770 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045a00, {0xcd3cce, 0xc0002e3d40}, {0xca6460, 0xc000358d50}, {0xc96540, 0xc000341458})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x3, {0x1, {0xce0f09, 0x2}, {0x0, 0x0}, 0x564989e9, 0x18}, 0x4)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 518278 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc00017cbd0, 0xc0003f13c8)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0005dfb10}, {0xcd27a2, 0x4}, {0xc0005dfc68, 0x3, 0xc0005dfb40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc00008fd18}, {0xc0005dfc68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000171290}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c420, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000171290}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c420, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517989 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170ed0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e6160, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517919 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc000823aa0, 0xc0003ed728)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0004d9b10}, {0xcd27a2, 0x4}, {0xc0004d9c68, 0x3, 0xc0004d9b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0001fac48}, {0xc0004d9c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc0001710b0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000526160, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc0001710b0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000526160, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517557 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc000985710, 0xc00082fce0)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc000249b10}, {0xcd27a2, 0x4}, {0xc000249c68, 0x3, 0xc000249b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc00008efc0}, {0xc000249c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000171380}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c370, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000171380}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c370, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517808 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170570}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e74a0, 0x65, 0xaf}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517556 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000171380}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c370, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517577 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045400, {0xcd3cce, 0xc9dfc0}, {0xca6460, 0xc0001f3e00}, {0xc96540, 0xc000089248})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x0, {0x3, {0xcdbf8f, 0x1}, {0xc00076c0d8, 0x7}, 0xc7e1af67, 0x18}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 21756 [sleep]:
+time.Sleep(0x1054e880)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014c5a0)
+	D:/Go/src/6.824/src/raft/raft.go:630 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:672 +0x2a7
+
+goroutine 517807 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000044e00, {0xcd3cce, 0xc9dfc0}, {0xca6460, 0xc00078d6e0}, {0xc96540, 0xc00042ca68})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x1, {0x3, {0xcdbf87, 0x1}, {0xc00086ab18, 0x8}, 0xc84c897e, 0x1e}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517936 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045280, {0xcd3cce, 0xc9dfc0}, {0xca6460, 0xc0007b9bf0}, {0xc96540, 0xc000219098})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x1, {0x1, {0xcdbf8d, 0x1}, {0x0, 0x0}, 0xfcf05d71, 0x1d}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517705 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc0000457c0, {0xcd3cce, 0xc9dfc0}, {0xca6460, 0xc0002e47b0}, {0xc96540, 0xc00044a540})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x2, {0x1, {0xce0f03, 0x2}, {0x0, 0x0}, 0xef6bd957, 0x1a}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 518053 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170a20}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c160, 0x65, 0xaf}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517526 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045b80, {0xcd3cce, 0xc000567f98}, {0xca6460, 0xc0008223f0}, {0xc96540, 0xc0003f01c8})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x4, {0x1, {0xce0f0d, 0x2}, {0x0, 0x0}, 0x8bf376ec, 0x20}, 0x4)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 21759 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc0002745f0)
+	D:/Go/src/6.824/src/kvraft/server.go:125 +0x70
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:201 +0x207
+
+goroutine 517668 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000044f80, {0xcd3cce, 0xc9dfc0}, {0xca6460, 0xc0007cf410}, {0xc96540, 0xc000004eb8})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x3, {0x3, {0xcdbf89, 0x1}, {0xc0001f5f40, 0x8}, 0x3a9d3510, 0x13}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517496 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc00054d830, 0xc000286540)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0000d3b10}, {0xcd27a2, 0x4}, {0xc0000d3c68, 0x3, 0xc0000d3b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0006ea230}, {0xc0000d3c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170fc0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558000, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170fc0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558000, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517956 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045100, {0xcd3cce, 0xc00045bf98}, {0xca6460, 0xc0002587e0}, {0xc96540, 0xc0004cf308})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x0, {0x3, {0xcdbf8b, 0x1}, {0xc00032e208, 0x8}, 0xba2c785b, 0x1b}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 21761 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc000274690)
+	D:/Go/src/6.824/src/kvraft/server.go:125 +0x70
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:201 +0x207
+
+goroutine 517665 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045340, {0xcd3cce, 0xc000799b60}, {0xca6460, 0xc0007b7aa0}, {0xc96540, 0xc00043def0})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x4, {0x3, {0xcdbf8e, 0x1}, {0xc0007d8138, 0x8}, 0x55d7cb9e, 0x1d}, 0x40)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517714 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170c00}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057cf20, 0x65, 0xaf}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517707 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc0002e4c30, 0xc00044a708)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0005b7b10}, {0xcd27a2, 0x4}, {0xc0005b7c68, 0x3, 0xc0005b7b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0002c23c8}, {0xc0005b7c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc0001711a0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0005589a0, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc0001711a0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0005589a0, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517981 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc0000451c0, {0xcd3cce, 0x0}, {0xca6460, 0xc00098e6f0}, {0xc96540, 0xc0002867b0})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x1, {0x3, {0xcdbf8c, 0x1}, {0xc0004a3d00, 0x8}, 0x11524e96, 0x19}, 0xc0002744b0)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517970 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc0007b9fb0, 0xc000219260)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0001dfb10}, {0xcd27a2, 0x4}, {0xc0001dfc68, 0x3, 0xc0001dfb40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0002647e0}, {0xc0001dfc68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170b10}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c000, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170b10}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c000, 0x5b, 0xa5}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517988 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045580, {0xcd3cce, 0xc000533f98}, {0xca6460, 0xc00054d9b0}, {0xc96540, 0xc0002afe30})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x4, {0x1, {0xce0efd, 0x2}, {0x0, 0x0}, 0x20db051b, 0x17}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517752 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc000678de0, 0xc0003cb788)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc000203b10}, {0xcd27a2, 0x4}, {0xc000203c68, 0x3, 0xc000203b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc000264528}, {0xc000203c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170660}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057d290, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170660}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057d290, 0x5b, 0xa5}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517706 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc0001711a0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0005589a0, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517555 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045940, {0xcd3cce, 0xc9dfc0}, {0xca6460, 0xc000985320}, {0xc96540, 0xc00082fb18})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x3, {0x1, {0xce0f07, 0x2}, {0x0, 0x0}, 0x3362424e, 0x1d}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517527 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000171650}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000526000, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517715 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc0007b7e30, 0xc0003ca0c0)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc000207b10}, {0xcd27a2, 0x4}, {0xc000207c68, 0x3, 0xc000207b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0002b3730}, {0xc000207c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170c00}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057cf20, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170c00}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057cf20, 0x65, 0xaf}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517957 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170930}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558160, 0x65, 0xaf}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517592 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc0007e9980, 0xc000337de8)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc000299b10}, {0xcd27a2, 0x4}, {0xc000299c68, 0x3, 0xc000299b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc00083b070}, {0xc000299c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000171560}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e6580, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000171560}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e6580, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517686 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170de0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e6c60, 0x5b, 0xa5}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 518276 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045880, {0xcd3cce, 0xc9dfc0}, {0xca6460, 0xc000724ab0}, {0xc96540, 0xc00055e438})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x2, {0x1, {0xce0f05, 0x2}, {0x0, 0x0}, 0x356d45f3, 0x15}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 518054 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc0001f3c20, 0xc00082f230)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0003f9b10}, {0xcd27a2, 0x4}, {0xc0003f9c68, 0x3, 0xc0003f9b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc00047fb80}, {0xc0003f9c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170a20}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c160, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170a20}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057c160, 0x65, 0xaf}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517917 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000045700, {0xcd3cce, 0xc9dfc0}, {0xca6460, 0xc000823500}, {0xc96540, 0xc0003ed560})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x4, {0x1, {0xce0f01, 0x2}, {0x0, 0x0}, 0x51c88fcb, 0x19}, 0xc000054190)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517818 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc00017d2f0, 0xc0005770f8)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc0002a9b10}, {0xcd27a2, 0x4}, {0xc0002a9c68, 0x3, 0xc0002a9b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc000007178}, {0xc0002a9c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170480}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558d10, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170480}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000558d10, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 517687 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc0002be600, 0xc0003400f0)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc00007db10}, {0xcd27a2, 0x4}, {0xc00007dc68, 0x3, 0xc00007db40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0002dc608}, {0xc00007dc68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170de0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e6c60, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170de0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc0000e6c60, 0x5b, 0xa5}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+
+goroutine 21754 [sleep]:
+time.Sleep(0x11861580)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014c4b0)
+	D:/Go/src/6.824/src/raft/raft.go:630 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:672 +0x2a7
+
+goroutine 517816 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000044d20, {0xcd3cce, 0x301b}, {0xca6460, 0xc00017cf00}, {0xc96540, 0xc000576f30})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x4, {0x1, {0xce0f0f, 0x2}, {0x0, 0x0}, 0xfefafca3, 0x16}, 0x1)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517750 [chan receive]:
+6.824/labrpc.(*ClientEnd).Call(0xc000044ec0, {0xcd3cce, 0xcb8760}, {0xca6460, 0xc0006789f0}, {0xc96540, 0xc0003cb578})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:112 +0x26e
+6.824/kvraft.(*Clerk).Execute.func1(0x4, {0x1, {0xcdbf88, 0x1}, {0x0, 0x0}, 0xeec2eec4, 0x1c}, 0x0)
+	D:/Go/src/6.824/src/kvraft/client.go:47 +0x11b
+created by 6.824/kvraft.(*Clerk).Execute
+	D:/Go/src/6.824/src/kvraft/client.go:45 +0x1b3
+
+goroutine 517615 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc000170840}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057cbb0, 0x5b, 0xa5}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 21757 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc000274550)
+	D:/Go/src/6.824/src/kvraft/server.go:125 +0x70
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:201 +0x207
+
+goroutine 517918 [select]:
+6.824/labrpc.(*Network).processReq(0xc000054190, {{0xc9e7c0, 0xc0001710b0}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc000526160, 0x5c, 0xa6}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:251 +0x41c
+created by 6.824/labrpc.MakeNetwork.func1
+	D:/Go/src/6.824/src/labrpc/labrpc.go:157 +0x3e
+
+goroutine 517616 [select]:
+6.824/kvraft.(*KVServer).Do(0xc0002745f0, 0xc0001db170, 0xc00043cb40)
+	D:/Go/src/6.824/src/kvraft/server.go:71 +0x2f4
+reflect.Value.call({0xc000052180, 0xc0002dc638, 0xc00029db10}, {0xcd27a2, 0x4}, {0xc00029dc68, 0x3, 0xc00029db40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052180, 0xc0002dc638, 0xc0002b2a28}, {0xc00029dc68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc000564340, {0xcd3cd7, 0x2}, {{0xc9e7c0, 0xc000170840}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057cbb0, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00036f470, {{0xc9e7c0, 0xc000170840}, {0xcd3cce, 0xb}, {0xd21560, 0xca6460}, {0xc00057cbb0, 0x5b, 0xa5}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+exit status 2
+FAIL	6.824/kvraft	600.085s

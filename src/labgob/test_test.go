@@ -127,6 +127,9 @@ func TestCapital(t *testing.T) {
 	data := w.Bytes()
 
 	var v1 []map[T4]int
+	if v1==nil{
+		t.Log("nil structture")
+	}
 	r := bytes.NewBuffer(data)
 	d := NewDecoder(r)
 	d.Decode(&v1)
