@@ -999,13 +999,13 @@ func internalChurn(t *testing.T, unreliable bool) {
 	cfg.end()
 }
 
-//func TestReliableChurn2C(t *testing.T) {
-//	internalChurn(t, false)
-//}
-//
-//func TestUnreliableChurn2C(t *testing.T) {
-//	internalChurn(t, true)
-//}
+func TestReliableChurn2C(t *testing.T) {
+	internalChurn(t, false)
+}
+
+func TestUnreliableChurn2C(t *testing.T) {
+	internalChurn(t, true)
+}
 
 const MAXLOGSIZE = 2000
 
@@ -1067,22 +1067,22 @@ func snapcommon(t *testing.T, name string, disconnect bool, reliable bool, crash
 	cfg.end()
 }
 
-//func TestSnapshotBasic2D(t *testing.T) {
-//	snapcommon(t, "Test (2D): snapshots basic", false, true, false)
-//}
-//
-//func TestSnapshotInstall2D(t *testing.T) {
-//	snapcommon(t, "Test (2D): install snapshots (disconnect)", true, true, false)
-//}
-//
-//func TestSnapshotInstallUnreliable2D(t *testing.T) {
-//	snapcommon(t, "Test (2D): install snapshots (disconnect+unreliable)",
-//		true, false, false)
-//}
-//
-//func TestSnapshotInstallCrash2D(t *testing.T) {
-//	snapcommon(t, "Test (2D): install snapshots (crash)", false, true, true)
-//}
+func TestSnapshotBasic2D(t *testing.T) {
+	snapcommon(t, "Test (2D): snapshots basic", false, true, false)
+}
+
+func TestSnapshotInstall2D(t *testing.T) {
+	snapcommon(t, "Test (2D): install snapshots (disconnect)", true, true, false)
+}
+
+func TestSnapshotInstallUnreliable2D(t *testing.T) {
+	snapcommon(t, "Test (2D): install snapshots (disconnect+unreliable)",
+		true, false, false)
+}
+
+func TestSnapshotInstallCrash2D(t *testing.T) {
+	snapcommon(t, "Test (2D): install snapshots (crash)", false, true, true)
+}
 
 func TestSnapshotInstallUnCrash2D(t *testing.T) {
 	snapcommon(t, "Test (2D): install snapshots (unreliable+crash)", false, false, true)

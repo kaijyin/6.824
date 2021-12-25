@@ -247,17 +247,15 @@ type AppendReply struct {
 */
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	rf.lock()
-	term:=rf.term
+	defer rf.unlock()
 	if rf.killed()||rf.state_ !=Leader{
-		rf.unlock()
-		return -1,term,false
+		return -1,rf.term,false
 	}
 	index:=rf.GetLastLogIdx()+1
 	rf.logs =append(rf.logs,Log_{Term_: rf.term, Command: command,Idx: index})
 	rf.persist()
-	rf.unlock()
-	rf.sendMsg(term)
-	return index, term, true
+	go rf.sendMsg(rf.term)
+	return index, rf.term, true
 }
 //发送日志(心跳),如果发生leader term不一致,及时退出
 func (rf *Raft) sendMsg(leaderTerm int) bool {
@@ -340,6 +338,9 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	//在RPC请求中,收到高任期的请求一定要跟新自己的任期,并成为flower
 	if rf.term <args.Term{
 		rf.BeFlower(args.Term)
+		reply.Idx=rf.commit
+		reply.Term=rf.term
+		return
 	}
 	//收到Rpc一定要刷新选举超时时间
 	rf.flashRpc()
@@ -519,7 +520,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		rf.BeFlower(args.Term)
 	}
 	//在当前任期中已经投票过了,不再参与投票
-	if rf.voteFor !=-1{
+	if rf.voteFor !=-1&&rf.voteFor!=args.CandidateId{
 		reply.Term =rf.term
 		return
 	}
