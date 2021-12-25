@@ -333,7 +333,7 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 		return
 	}
 	//在RPC请求中,收到高任期的请求一定要跟新自己的任期,并成为其flower
-	if rf.term <args.Term{
+	if rf.term <args.Term||rf.state_==Candidate{//如果是后面出来的candidate又收到当前leader的
 		rf.Follow(args.LeaderId,args.Term)
 	}
 	//收到Rpc一定要刷新选举超时时间
@@ -424,9 +424,9 @@ func (rf *Raft) receiveAppendReplay(i int,leaderTerm int,reply *AppendReply){
 	rf.match_[i]=rf.next_[i]-1
 
 	//开始进入Leader提交日志判断
-	//条件1:返回的replyidx不是当前任期发送的日志,即日志没有复制成功
-	//条件2:日志提交comit都大于reply.idx了,不用再用来判断是否更新commit
-	if rf.commit>=reply.Idx{
+	//条件1:日志提交comit都大于reply.idx了,不用再用来判断是否更新commit
+	//条件2:!!!!!!!!!!!!只能commit当前任期的日志
+	if rf.commit>=reply.Idx||rf.GetLogTerm(reply.Idx)!=rf.term{
 		return
 	}
 	//判断是否集群中大部分服务器都复制了idx以及之前的日志,如果是,则Leader提交日志到idx
@@ -471,7 +471,7 @@ func (rf *Raft) election(electionTerm int)  {
 			continue
 		}
 		rf.lock()
-		if rf.killed() ||rf.term!=electionTerm{
+		if rf.killed() ||rf.term!=electionTerm||rf.state_!=Candidate{//同一term有可能从candidate变为flower或leader
 			rf.unlock()
 			return
 		}
@@ -489,12 +489,18 @@ func (rf *Raft) election(electionTerm int)  {
 		}(i)
 	}
 	cond.L.Lock()
-	curTerm,_:=rf.GetState()
+	rf.lock()
+	curTerm:=rf.term
+	curState:=rf.state_
+	rf.unlock()
 	//阻塞,等待收到所有人的回复,或者大部分人投票通过,或者RPC请求延迟,进入新的任期,收到其余服务器的RPC后状态改变后,停止阻塞
 	curFinish:=atomic.LoadInt64(&finish)
-	for  !rf.killed()&&int(curFinish)<rf.peerCount&&curTerm== electionTerm{
+	for  !rf.killed()&&int(curFinish)<rf.peerCount&&curTerm== electionTerm&&curState==Candidate{
 		cond.Wait()
-		curTerm,_=rf.GetState()
+		rf.lock()
+		curTerm=rf.term
+		curState=rf.state_
+		rf.unlock()
 		curFinish=atomic.LoadInt64(&finish)
 	}
 	cond.L.Unlock()
@@ -502,7 +508,6 @@ func (rf *Raft) election(electionTerm int)  {
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	rf.lock()
 	defer rf.unlock()
-	reply.VoteGranted =0
 	lastIdx :=rf.GetLastLogIdx()
 	lastTerm :=rf.GetLogTerm(lastIdx)
 	if rf.killed()||args.Term <rf.term {
@@ -529,7 +534,6 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		reply.Term =rf.term
 		return
 	}
-	DPrintf("%d vote to %d lastIdx:%d lastTerm:%d",rf.me,args.CandidateId,lastIdx,lastTerm)
 	//收到RPC请求刷新选举超时时间
 	rf.flashRpc()
 	//投票
@@ -542,7 +546,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 func (rf *Raft) receiveVoteReply(electionTerm int,reply *RequestVoteReply) bool {
 	rf.lock()
 	defer rf.unlock()
-	if rf.killed()||rf.term!=electionTerm||rf.state_==Leader{//以及成为leader就不再处理,否则会多次修改next!
+	if rf.killed()||rf.term!=electionTerm||rf.state_!=Candidate{//同一term有可能成为leader,也有可能成为flower
 		return false
 	}
 	if reply.Term>rf.term {
@@ -574,20 +578,14 @@ func (rf *Raft) killed() bool {
 func (rf *Raft)Follow(leader int,term int){
 	rf.state_ =Flower
 	rf.voteFor =leader
-	rf.votes=0
 	rf.term =term
-	lastIdx:=rf.GetLastLogIdx()
-	DPrintf("rf:%d Follow %d in term:%d lastIdx:%d lastTeam:%d",rf.me,leader,rf.term,lastIdx,rf.GetLogTerm(lastIdx))
 	rf.persist()
 	rf.flashRpc()
 }
 func (rf *Raft) BeFlower(term int)  {
 	rf.state_ =Flower
 	rf.voteFor =-1
-	rf.votes=0
 	rf.term =term
-	lastIdx:=rf.GetLastLogIdx()
-	DPrintf("rf:%d be flower in term:%d lastIdx:%d lastTeam:%d",rf.me,rf.term,lastIdx,rf.GetLogTerm(lastIdx))
 	rf.persist()
 	rf.flashRpc()
 }
@@ -596,17 +594,12 @@ func (rf *Raft) BeCandidate()  {
 	rf.voteFor =rf.me
 	rf.votes=1
 	rf.term++
-	lastIdx:=rf.GetLastLogIdx()
-	DPrintf("rf:%d be candidate in term:%d lastIdx:%d lastTeam:%d",rf.me,rf.term,lastIdx,rf.GetLogTerm(lastIdx))
 	//任期更改,持久化
 	rf.persist()
 	rf.flashRpc()
 }
 func (rf *Raft) BeLeader()  {
-	lastIdx:=rf.GetLastLogIdx()
-	DPrintf("rf:%d be leader in term:%d lastIdx:%d lastTeam:%d",rf.me,rf.term,lastIdx,rf.GetLogTerm(lastIdx))
 	rf.state_ =Leader
-	rf.voteFor =rf.me
 	for i:=0;i<rf.peerCount;i++{
 		rf.next_[i]=rf.commit+1
 		rf.match_[i]=0
