@@ -100,9 +100,6 @@ func (rf *Raft) GetLogTerm(idx int) int {
 	curIdx:=idx-startIdx
 	return rf.logs[curIdx].Term_
 }
-func (rf *Raft) GetLogLen() int {
-	return len(rf.logs)
-}
 func (rf *Raft) CutLog(start int,end int)[]Log_{
 	left:=start-rf.GetFirstLogIdx()
 	right:= end -rf.GetFirstLogIdx()+1
@@ -335,9 +332,9 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 		reply.Term=rf.term
 		return
 	}
-	//在RPC请求中,收到高任期的请求一定要跟新自己的任期,并成为flower
+	//在RPC请求中,收到高任期的请求一定要跟新自己的任期,并成为其flower
 	if rf.term <args.Term{
-		rf.BeFlower(args.Term)
+		rf.Follow(args.LeaderId,args.Term)
 	}
 	//收到Rpc一定要刷新选举超时时间
 	rf.flashRpc()
@@ -532,6 +529,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		reply.Term =rf.term
 		return
 	}
+	DPrintf("%d vote to %d lastIdx:%d lastTerm:%d",rf.me,args.CandidateId,lastIdx,lastTerm)
 	//收到RPC请求刷新选举超时时间
 	rf.flashRpc()
 	//投票
@@ -573,10 +571,23 @@ func (rf *Raft) killed() bool {
 	z := atomic.LoadInt32(&rf.dead)
 	return z == 1
 }
+func (rf *Raft)Follow(leader int,term int){
+	rf.state_ =Flower
+	rf.voteFor =leader
+	rf.votes=0
+	rf.term =term
+	lastIdx:=rf.GetLastLogIdx()
+	DPrintf("rf:%d Follow %d in term:%d lastIdx:%d lastTeam:%d",rf.me,leader,rf.term,lastIdx,rf.GetLogTerm(lastIdx))
+	rf.persist()
+	rf.flashRpc()
+}
 func (rf *Raft) BeFlower(term int)  {
 	rf.state_ =Flower
 	rf.voteFor =-1
+	rf.votes=0
 	rf.term =term
+	lastIdx:=rf.GetLastLogIdx()
+	DPrintf("rf:%d be flower in term:%d lastIdx:%d lastTeam:%d",rf.me,rf.term,lastIdx,rf.GetLogTerm(lastIdx))
 	rf.persist()
 	rf.flashRpc()
 }
@@ -585,12 +596,17 @@ func (rf *Raft) BeCandidate()  {
 	rf.voteFor =rf.me
 	rf.votes=1
 	rf.term++
+	lastIdx:=rf.GetLastLogIdx()
+	DPrintf("rf:%d be candidate in term:%d lastIdx:%d lastTeam:%d",rf.me,rf.term,lastIdx,rf.GetLogTerm(lastIdx))
 	//任期更改,持久化
 	rf.persist()
 	rf.flashRpc()
 }
 func (rf *Raft) BeLeader()  {
+	lastIdx:=rf.GetLastLogIdx()
+	DPrintf("rf:%d be leader in term:%d lastIdx:%d lastTeam:%d",rf.me,rf.term,lastIdx,rf.GetLogTerm(lastIdx))
 	rf.state_ =Leader
+	rf.voteFor =rf.me
 	for i:=0;i<rf.peerCount;i++{
 		rf.next_[i]=rf.commit+1
 		rf.match_[i]=0
@@ -598,15 +614,12 @@ func (rf *Raft) BeLeader()  {
 	go rf.heartTicker(rf.term)
 }
 func (rf *Raft) heartTicker(leaderTerm int)  {
-	if !rf.sendMsg(leaderTerm){
-		return
-	}
 	//选举结束立刻发送心跳
 	for !rf.killed(){
-		time.Sleep(time.Duration(heartbeatInterval)*time.Millisecond)
 		if !rf.sendMsg(leaderTerm){
 			return
 		}
+		time.Sleep(time.Duration(heartbeatInterval)*time.Millisecond)
 	}
 }
 func (rf *Raft) electionTicker() {

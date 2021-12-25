@@ -999,13 +999,13 @@ func internalChurn(t *testing.T, unreliable bool) {
 	cfg.end()
 }
 
-func TestReliableChurn2C(t *testing.T) {
-	internalChurn(t, false)
-}
+//func TestReliableChurn2C(t *testing.T) {
+//	internalChurn(t, false)
+//}
 
-func TestUnreliableChurn2C(t *testing.T) {
-	internalChurn(t, true)
-}
+//func TestUnreliableChurn2C(t *testing.T) {
+//	internalChurn(t, true)
+//}
 
 const MAXLOGSIZE = 2000
 

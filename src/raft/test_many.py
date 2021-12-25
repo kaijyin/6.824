@@ -125,7 +125,7 @@ def last_line(file: str) -> str:
 def run_tests(
         tests: List[str]=["2C"],
         sequential: bool = typer.Option(True, '--sequential', '-s', help='Run all test of each group in order'),
-        workers: int = typer.Option(20, '--workers', '-p', help='Number of parallel tasks'),
+        workers: int = typer.Option(30, '--workers', '-p', help='Number of parallel tasks'),
         iterations: int = typer.Option(2000, '--iter', '-n', help='Number of iterations to run'),
         output: Optional[Path] = typer.Option(None, '--output', '-o', help='Output path to use'),
 
@@ -217,7 +217,6 @@ def run_tests(
                             task_progress.update(tasks[test], description=f"[red]{test}[/red]")
                             results[test]['failed'].add(1)
                         else:
-                            print(f"sucess test {test} - {dest}")
                             if results[test]['completed'].n == iterations and results[test]['failed'].n == 0:
                                 task_progress.update(tasks[test], description=f"[green]{test}[/green]")
 
