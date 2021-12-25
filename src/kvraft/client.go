@@ -35,7 +35,6 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck.total=int64(len(ck.servers))
 	// You'll have to add code here.
 	ck.me=nrand()
-	DPrintf("ck.me:%d",ck.me)
 	return ck
 }
 func (ck *Clerk) Execute(args *RequestArgs,reply *ExecuteReply){

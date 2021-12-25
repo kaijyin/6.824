@@ -149,10 +149,10 @@ func (kv *KVServer) doExecute() {
 				ch.(chan ExecuteReply) <- reply
 			}
 		} else if args.SnapshotValid && kv.curIndex < args.SnapshotIndex {
-			kv.curIndex=args.SnapshotIndex
 			// 必须先安装日志,再改具体的kv存储
 			kv.rf.CondInstallSnapshot(args.SnapshotTerm, args.SnapshotIndex, args.Snapshot)
 			kv.InstallSnapShot(args.Snapshot)
+			kv.curIndex=args.SnapshotIndex
 		}
 		kv.unlock()
 	}

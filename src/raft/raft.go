@@ -338,9 +338,6 @@ func (rf *Raft) AppendLog(args *AppendArgs,reply *AppendReply)  { //reply的idx�
 	//在RPC请求中,收到高任期的请求一定要跟新自己的任期,并成为flower
 	if rf.term <args.Term{
 		rf.BeFlower(args.Term)
-		reply.Idx=rf.commit
-		reply.Term=rf.term
-		return
 	}
 	//收到Rpc一定要刷新选举超时时间
 	rf.flashRpc()
