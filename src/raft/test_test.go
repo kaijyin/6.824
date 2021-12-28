@@ -1003,9 +1003,9 @@ func internalChurn(t *testing.T, unreliable bool) {
 //	internalChurn(t, false)
 //}
 
-//func TestUnreliableChurn2C(t *testing.T) {
-//	internalChurn(t, true)
-//}
+func TestUnreliableChurn2C(t *testing.T) {
+	internalChurn(t, true)
+}
 
 const MAXLOGSIZE = 2000
 

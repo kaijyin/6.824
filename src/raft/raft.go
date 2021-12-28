@@ -485,7 +485,9 @@ func (rf *Raft) election(electionTerm int)  {
 				atomic.AddInt64(&finish,int64(rf.peerCount))
 			}
 			atomic.AddInt64(&finish,1)
-			cond.Broadcast()
+			cond.L.Lock()
+			cond.Signal()
+			cond.L.Unlock()
 		}(i)
 	}
 	cond.L.Lock()
