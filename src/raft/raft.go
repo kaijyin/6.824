@@ -162,18 +162,14 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 		return false
 	}
 	firstLogIdx:=rf.GetFirstLogIdx()
-	//已经安装过更新版本的快照,放弃当前快照
-	if firstLogIdx>=lastIncludedIndex{
+	//已经执行的命令index>当前快照index,放弃快照
+	if rf.commit>=lastIncludedIndex{
 		return false
 	}
-	//
+	rf.commit=lastIncludedIndex
 	if rf.term<lastIncludedTerm{
 		rf.BeFlower(lastIncludedTerm)
 	}
-	if lastIncludedIndex>rf.commit{
-		rf.commit=lastIncludedIndex
-	}
-
 	//要保留log的第0位置存在,且idx<=rf.commit
 	if lastIncludedIndex>=rf.GetLastLogIdx(){
 		rf.logs=nil

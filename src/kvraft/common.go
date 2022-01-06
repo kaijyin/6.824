@@ -16,10 +16,17 @@ type RequestArgs struct {
 	CkId  uint32
 	CkIndex uint32
 }
-func (req *RequestArgs) GetId()uint64  {
-	return (uint64(req.CkId)<<32)+uint64(req.CkIndex)
-}
+//func (req *RequestArgs) GetId()uint64  {
+//	return (uint64(req.CkId)<<32)+uint64(req.CkIndex)
+//}
 
+func Max(a uint32,b uint32)uint32  {
+	if a>b{
+		return a
+	}else{
+		return b
+	}
+}
 type ExecuteReply struct {
     RequestApplied bool
 	Value string

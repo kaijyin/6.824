@@ -39,6 +39,7 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 }
 func (ck *Clerk) Execute(args *RequestArgs,reply *ExecuteReply){
 	time.Sleep(time.Microsecond)
+	DPrintf("%d req:%d send",ck.me,ck.index)
 	for server:=atomic.LoadInt64(&ck.lastLeader);;server=(server+1)%ck.total{
 		ch:=make(chan ExecuteReply,1)
 		go func(i int64) {
@@ -52,6 +53,7 @@ func (ck *Clerk) Execute(args *RequestArgs,reply *ExecuteReply){
 		case <-time.After(time.Second):
 		case *reply=<-ch:
 			if reply.RequestApplied{
+				DPrintf("%d req:%d applied",ck.me,ck.index)
 				atomic.StoreInt64(&ck.lastLeader,server)
 				return
 			}
