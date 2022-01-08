@@ -125,17 +125,17 @@ def last_line(file: str) -> str:
 def run_tests(
         tests: List[str]=["3B"],
         sequential: bool = typer.Option(False, '--sequential', '-s', help='Run all test of each group in order'),
-        workers: int = typer.Option(10, '--workers', '-p', help='Number of parallel tasks'),
-        iterations: int = typer.Option(500, '--iter', '-n', help='Number of iterations to run'),
+        workers: int = typer.Option(15, '--workers', '-p', help='Number of parallel tasks'),
+        iterations: int = typer.Option(2000, '--iter', '-n', help='Number of iterations to run'),
         output: Optional[Path] = typer.Option(None, '--output', '-o', help='Output path to use'),
 
 
 
         verbose: int = typer.Option(0, '--verbose', '-v', help='Verbosity level', count=True),
         archive: bool = typer.Option(False, '--archive', '-a', help='Save all logs intead of only failed ones'),
-        race: bool = typer.Option(True, '--race/--no-race', '-r/-R', help='Run with race checker'),
+        race: bool = typer.Option(False, '--race/--no-race', '-r/-R', help='Run with race checker'),
         loop: bool = typer.Option(True, '--loop', '-l', help='Run continuously'),
-        growth: int = typer.Option(10, '--growth', '-g', help='Growth ratio of iterations when using --loop'),
+        growth: int = typer.Option(2, '--growth', '-g', help='Growth ratio of iterations when using --loop'),
         timing: bool = typer.Option(False, '--timing', '-t', help='Report timing, only works on macOS'),
         # fmt: on
 ):

@@ -1,5 +1,9 @@
 package shardctrler
 
+import (
+	"log"
+)
+
 //
 // Shard controler: assigns shards to replication groups.
 //
@@ -28,6 +32,19 @@ type Config struct {
 	Groups map[int][]string // gid -> servers[]
 }
 
+func (c *Config) Print()  {
+	DPrintf("-------Config-----------")
+	DPrintf("num:%d",c.Num)
+	DPrintf("shard:")
+	for i,g:=range c.Shards{
+		DPrintf("index:%d  group:%d",i,g)
+	}
+	DPrintf("Groups:")
+	for g,_:=range c.Groups{
+		DPrintf("%d",g)
+	}
+
+}
 const (
 	OK = "OK"
 )
@@ -38,11 +55,28 @@ const (
 	Query =4
 )
 
+type Gpair struct {
+	gid int
+	service []string
+}
+
+type Gset []Gpair
+
+func (g Gset) Len() int {
+	return len(g)
+}
+func (g Gset) Less(i, j int) bool {
+	return g[i].gid<g[j].gid
+}
+func (g Gset) Swap(i, j int) {
+	g[i], g[j] = g[j], g[i]
+}
+
 type Args struct {
-	CKID uint32
-	Index uint32
-	Type int
-	Args  interface{}
+	CkId    int64
+	CkIndex uint32
+	Type    int
+	Reqargs interface{}
 }
 
 
@@ -66,3 +100,15 @@ type Reply struct {
 	RequestApplied bool
 	Config      Config
 }
+
+
+// Debugging
+const Debug = true
+
+func DPrintf(format string, a ...interface{}) (n int, err error) {
+	if Debug {
+		log.Printf(format, a...)
+	}
+	return
+}
+

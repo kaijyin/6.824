@@ -13,7 +13,7 @@ import (
 type Op struct {
 	RequestArgs
 	Server int
-	Time int64
+	Time   int64
 }
 
 type KVServer struct {
@@ -25,11 +25,11 @@ type KVServer struct {
 
 	maxraftstate int // snapshot if log grows this big
 
-	chMap      sync.Map
+	chMap sync.Map
 	// Your definitions here.
 	curIndex    int
 	kvMap       map[string]string
-	ckLastIndex map[uint32]uint32
+	ckLastIndex map[int64]uint32
 }
 
 func (kv *KVServer) lock() {
@@ -41,10 +41,13 @@ func (kv *KVServer) unlock() {
 }
 
 func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
-	//DPrintf("%d do ck:%d index:%d op:%d", kv.me, args.CkId, args.CkIndex, args.Type)
 	kv.lock()
+	if kv.killed() {
+		kv.unlock()
+		return
+	}
 	//去除掉以及处理了的请求,小优化,对网络不可信的情况下很常见
-	lastIdx, _ := kv.ckLastIndex[args.CkId]
+	lastIdx := kv.ckLastIndex[args.CkId]
 	if lastIdx >= args.CkIndex {
 		reply.RequestApplied = true
 		if args.Type == Gets {
@@ -56,7 +59,7 @@ func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
 	time.Sleep(time.Microsecond)
 	now := time.Now().UnixNano()
 	ch := make(chan ExecuteReply, 1)
-	kv.chMap.Store(now,ch)
+	kv.chMap.Store(now, ch)
 	defer kv.chMap.Delete(now)
 	_, _, ok := kv.rf.Start(Op{
 		RequestArgs: *args,
@@ -69,7 +72,7 @@ func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
 	}
 	kv.unlock()
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(time.Millisecond * 500):
 	case *reply = <-ch: //do execute向chenel发送reply之后就删除id的映射
 	}
 }
@@ -96,13 +99,16 @@ func (kv *KVServer) killed() bool {
 	return z == 1
 }
 func (kv *KVServer) SnapShot() {
+	if kv.killed() {
+		return
+	}
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
 	e.Encode(kv.curIndex)
 	e.Encode(kv.kvMap)
 	e.Encode(kv.ckLastIndex)
-	//可以开线程去执行snapshot
-	go kv.rf.Snapshot(kv.curIndex, w.Bytes())
+	//不开线程去执行snapshot,因为可能会导致多次执行,增加负担
+	kv.rf.Snapshot(kv.curIndex, w.Bytes())
 }
 func (kv *KVServer) InstallSnapShot(snapshot []byte) {
 	if snapshot == nil || len(snapshot) < 1 {
@@ -129,13 +135,12 @@ func (kv *KVServer) doExecute() {
 			op := args.Command.(Op)
 			ch, ok := kv.chMap.Load(op.Time)
 			reply := ExecuteReply{}
-			kv.curIndex = args.CommandIndex
 			ck := op.CkId
-			lastIndex, _ := kv.ckLastIndex[op.CkId]
+			lastIndex := kv.ckLastIndex[op.CkId]
 			if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行
 				kv.ckLastIndex[ck] = op.CkIndex
 				reply.RequestApplied = true
-				if op.Type == Gets && ok&&op.Server==kv.me {
+				if op.Type == Gets && ok && op.Server == kv.me {
 					reply.Value = kv.kvMap[op.Key]
 				} else if op.Type == Puts {
 					kv.kvMap[op.Key] = op.Value
@@ -147,7 +152,7 @@ func (kv *KVServer) doExecute() {
 				kv.SnapShot()
 			}
 			//可能kv index之前的并没有被实际执行,而是直接安装snapshot,所以还是需要把等待的请求给去除掉
-			if ok &&kv.me==op.Server{
+			if ok && kv.me == op.Server {
 				ch.(chan ExecuteReply) <- reply
 			}
 		} else if args.SnapshotValid && kv.rf.CondInstallSnapshot(args.SnapshotTerm, args.SnapshotIndex, args.Snapshot) {
@@ -176,16 +181,18 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	// call labgob.Register on structures you want
 	// Go's RPC library to marshall/unmarshall.
 	labgob.Register(Op{})
+	labgob.Register(RequestArgs{})
+	labgob.Register(ExecuteReply{})
 
 	kv := new(KVServer)
 	kv.me = me
 	kv.maxraftstate = maxraftstate
 
 	kv.kvMap = make(map[string]string)
-	kv.ckLastIndex = make(map[uint32]uint32)
+	kv.ckLastIndex = make(map[int64]uint32)
 	// You may need initialization code here.
 
-	kv.applyCh = make(chan raft.ApplyMsg)
+	kv.applyCh = make(chan raft.ApplyMsg, 20)
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 	// You may need initialization code here.
 

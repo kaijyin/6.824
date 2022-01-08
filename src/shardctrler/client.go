@@ -16,18 +16,18 @@ import "math/big"
 type Clerk struct {
 	mu sync.Mutex
 	servers []*labrpc.ClientEnd
-	me uint32
+	me int64
     index uint32
 	lastLeader int64
 	total int64
 	// Your data here.
 }
 
-func nrand() uint32 {
-	max := big.NewInt(int64(1) << 32)
+func nrand() int64 {
+	max := big.NewInt(int64(1) << 62)
 	bigx, _ := rand.Int(rand.Reader, max)
-	x := bigx.Uint64()
-	return uint32(x)
+	x := bigx.Int64()
+	return x
 }
 
 func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
@@ -44,14 +44,14 @@ func (ck *Clerk) Query(num int) Config {
 	ck.mu.Lock()
 	defer ck.mu.Unlock()
 	ck.index++
-	args := &QueryArgs{Num: num}
+	args := QueryArgs{Num: num}
 	// Your code here.
 	reply:=&Reply{}
 	ck.Execute(&Args{
-		CKID:  ck.me,
-		Index: ck.index,
-		Type: Query,
-		Args:  args,
+		CkId: ck.me,
+		CkIndex: ck.index,
+		Type:    Query,
+		Reqargs: args,
 	},reply)
 	return reply.Config
 }
@@ -60,12 +60,12 @@ func (ck *Clerk) Join(servers map[int][]string) {
 	ck.mu.Lock()
 	defer ck.mu.Unlock()
 	ck.index++
-	args := &JoinArgs{Servers: servers}
+	args := JoinArgs{Servers: servers}
 	ck.Execute(&Args{
-		CKID:  ck.me,
-		Index: ck.index,
-        Type: Join,
-		Args:  args,
+		CkId: ck.me,
+		CkIndex: ck.index,
+        Type:    Join,
+		Reqargs: args,
 	},&Reply{})
 }
 
@@ -73,12 +73,12 @@ func (ck *Clerk) Leave(gids []int) {
 	ck.mu.Lock()
 	defer ck.mu.Unlock()
 	ck.index++
-	args := &LeaveArgs{GIDs: gids}
+	args := LeaveArgs{GIDs: gids}
 	ck.Execute(&Args{
-		CKID:  ck.me,
-		Index: ck.index,
-		Type: Leave,
-		Args:  args,
+		CkId: ck.me,
+		CkIndex: ck.index,
+		Type:    Leave,
+		Reqargs: args,
 	},&Reply{})
 }
 
@@ -86,15 +86,13 @@ func (ck *Clerk) Move(shard int, gid int) {
 	ck.mu.Lock()
 	defer ck.mu.Unlock()
 	ck.index++
-	args := &MoveArgs{Shard: shard,GID: gid}
+	args := MoveArgs{Shard: shard,GID: gid}
 	ck.Execute(&Args{
-		CKID:  ck.me,
-		Index: ck.index,
-		Type: Move,
-		Args:  args,
+		CkId: ck.me,
+		CkIndex: ck.index,
+		Type:    Move,
+		Reqargs: args,
 	},&Reply{})
-
-
 }
 func (ck *Clerk) Execute(args *Args,reply *Reply){
 	time.Sleep(time.Microsecond)
@@ -108,8 +106,8 @@ func (ck *Clerk) Execute(args *Args,reply *Reply){
 			}
 		}(server)
 		select {
-		case <-time.After(time.Second):
-		case reply=<-ch:
+		case <-time.After(time.Millisecond*300):
+		case *reply=<-ch:
 			if reply.RequestApplied{
 				atomic.StoreInt64(&ck.lastLeader,server)
 				return
