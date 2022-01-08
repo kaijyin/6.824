@@ -118,8 +118,6 @@ func (rf *Raft) GetState() (int, bool) {
 	return rf.term, rf.state_ == Leader
 }
 func (rf *Raft) GetRaftStateSize() int {
-	rf.lock()
-	defer rf.unlock()
 	return rf.persister.RaftStateSize()
 }
 func (rf *Raft) GetRaftStateData() []byte {
@@ -163,9 +161,6 @@ func (rf *Raft) CondInstallSnapshot(lastIncludedTerm int, lastIncludedIndex int,
 		return false
 	}
 	rf.commit = lastIncludedIndex
-	if rf.term < lastIncludedTerm {
-		rf.BeFlower(lastIncludedTerm)
-	}
 	//要保留log的第0位置存在,且idx<=rf.commit
 	if lastIncludedIndex >= rf.GetLastLogIdx() {
 		rf.logs = nil

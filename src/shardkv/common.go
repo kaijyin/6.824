@@ -1,5 +1,9 @@
 package shardkv
 
+import (
+	"log"
+)
+
 //
 // Sharded key/value server.
 // Lots of replica groups, each running Raft.
@@ -18,27 +22,38 @@ const (
 
 type Err string
 
-// Put or Append
-type PutAppendArgs struct {
-	// You'll have to add definitions here.
-	Key   string
+const (
+	Gets    = 1
+	Puts    = 2
+	Appends = 3
+)
+
+type RequestArgs struct {
+	ISCK bool
+	Shard   int
+
+	ConfigNum int
+
+	CkId    int64
+	CkIndex uint32
+	Type    uint8 // 0 => get, 1 => put, 2 => append
+	Key     string
+	Value   string
+}
+
+type ExecuteReply struct {
+	Err
 	Value string
-	Op    string // "Put" or "Append"
-	// You'll have to add definitions here.
-	// Field names must start with capital letters,
-	// otherwise RPC will break.
+
+	ShardData map[string]string
+	ShardLastCkIndex map[int64]uint32
 }
 
-type PutAppendReply struct {
-	Err Err
-}
+const Debug = true
 
-type GetArgs struct {
-	Key string
-	// You'll have to add definitions here.
-}
-
-type GetReply struct {
-	Err   Err
-	Value string
+func DPrintf(format string, a ...interface{}) (n int, err error) {
+	if Debug {
+		log.Printf(format, a...)
+	}
+	return
 }

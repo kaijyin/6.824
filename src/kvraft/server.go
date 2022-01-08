@@ -17,7 +17,7 @@ type Op struct {
 }
 
 type KVServer struct {
-	mu      sync.Mutex
+	clockMu      sync.Mutex
 	me      int
 	rf      *raft.Raft
 	applyCh chan raft.ApplyMsg
@@ -32,32 +32,14 @@ type KVServer struct {
 	ckLastIndex map[int64]uint32
 }
 
-func (kv *KVServer) lock() {
-	kv.mu.Lock()
-}
-func (kv *KVServer) unlock() {
-	// Your code here.
-	kv.mu.Unlock()
-}
-
 func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
-	kv.lock()
 	if kv.killed() {
-		kv.unlock()
 		return
 	}
-	//去除掉以及处理了的请求,小优化,对网络不可信的情况下很常见
-	lastIdx := kv.ckLastIndex[args.CkId]
-	if lastIdx >= args.CkIndex {
-		reply.RequestApplied = true
-		if args.Type == Gets {
-			reply.Value = kv.kvMap[args.Key]
-		}
-		kv.unlock()
-		return
-	}
+	kv.clockMu.Lock()//每个请求通过时间戳唯一
 	time.Sleep(time.Microsecond)
 	now := time.Now().UnixNano()
+	kv.clockMu.Unlock()
 	ch := make(chan ExecuteReply, 1)
 	kv.chMap.Store(now, ch)
 	defer kv.chMap.Delete(now)
@@ -67,10 +49,8 @@ func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
 		Time:        now,
 	})
 	if !ok {
-		kv.unlock()
 		return
 	}
-	kv.unlock()
 	select {
 	case <-time.After(time.Millisecond * 500):
 	case *reply = <-ch: //do execute向chenel发送reply之后就删除id的映射
@@ -125,9 +105,7 @@ func (kv *KVServer) InstallSnapShot(snapshot []byte) {
 }
 func (kv *KVServer) doExecute() {
 	for args := range kv.applyCh {
-		kv.lock()
 		if kv.killed() {
-			kv.unlock()
 			return
 		}
 		if args.CommandValid && kv.curIndex+1 == args.CommandIndex { //序列化
@@ -137,16 +115,17 @@ func (kv *KVServer) doExecute() {
 			reply := ExecuteReply{}
 			ck := op.CkId
 			lastIndex := kv.ckLastIndex[op.CkId]
+			reply.RequestApplied=true
 			if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行
 				kv.ckLastIndex[ck] = op.CkIndex
-				reply.RequestApplied = true
-				if op.Type == Gets && ok && op.Server == kv.me {
-					reply.Value = kv.kvMap[op.Key]
-				} else if op.Type == Puts {
+               if op.Type == Puts {
 					kv.kvMap[op.Key] = op.Value
 				} else if op.Type == Appends {
 					kv.kvMap[op.Key] += op.Value
 				}
+			}
+			if op.Type == Gets && ok && op.Server == kv.me {
+				reply.Value = kv.kvMap[op.Key]
 			}
 			if kv.maxraftstate != -1 && kv.rf.GetRaftStateSize() >= kv.maxraftstate {
 				kv.SnapShot()
@@ -159,7 +138,6 @@ func (kv *KVServer) doExecute() {
 			// 必须先安装日志,再改具体的kv存储
 			kv.InstallSnapShot(args.Snapshot)
 		}
-		kv.unlock()
 	}
 }
 
