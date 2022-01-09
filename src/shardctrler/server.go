@@ -78,15 +78,8 @@ func (sc *ShardCtrler) Do(args *Args, reply *Reply) {
 
 func (sc *ShardCtrler) join(args JoinArgs) {
 	preConfig := sc.configs[len(sc.configs)-1]
-	newConfig := Config{Num: len(sc.configs)}
-	newConfig.Groups = make(map[int][]string)
-	for k, v := range preConfig.Groups {
-		newConfig.Groups[k] = make([]string, len(v))
-		copy(newConfig.Groups[k], v)
-	}
-	for i, g := range preConfig.Shards {
-		newConfig.Shards[i] = g
-	}
+	newConfig := preConfig.Copy()
+	newConfig.Num++
 	gs:=Gset{}
 	for gid, sever := range args.Servers {
 		gs=append(gs,Gpair{
@@ -133,15 +126,8 @@ func (sc *ShardCtrler) join(args JoinArgs) {
 }
 func (sc *ShardCtrler) move(args MoveArgs) {
 	preConfig := sc.configs[len(sc.configs)-1]
-	newConfig := Config{Num: len(sc.configs)}
-	newConfig.Groups = make(map[int][]string)
-	for k, v := range preConfig.Groups {
-		newConfig.Groups[k] = make([]string, len(v))
-		copy(newConfig.Groups[k], v)
-	}
-	for i, g := range preConfig.Shards {
-		newConfig.Shards[i] = g
-	}
+	newConfig := preConfig.Copy()
+	newConfig.Num++
 	newConfig.Shards[args.Shard]=args.GID
 	sc.configs=append(sc.configs,newConfig)
 }

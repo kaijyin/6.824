@@ -1,0 +1,14 @@
+Test: restarts, snapshots, many clients (3B) ...
+info: wrote history visualization to C:\Users\未来\AppData\Local\Temp\3455522287.html
+--- FAIL: TestSnapshotRecoverManyClients3B (20.02s)
+    test_test.go:287: get wrong value, key 6, wanted:
+        x 6 0 yx 6 1 yx 6 2 yx 6 3 yx 6 4 yx 6 5 yx 6 6 yx 6 7 yx 6 8 yx 6 9 yx 6 10 yx 6 11 yx 6 12 yx 6 13 yx 6 14 yx 6 15 yx 6 16 yx 6 17 yx 6 18 yx 6 19 yx 6 20 yx 6 21 yx 6 22 yx 6 23 yx 6 24 yx 6 25 yx 6 26 yx 6 27 yx 6 28 yx 6 29 yx 6 30 yx 6 31 yx 6 32 y
+        , got
+        
+    test_test.go:120: failure
+    test_test.go:376: history is not linearizable
+Test: unreliable net, restarts, partitions, snapshots, random keys, many clients (3B) ...
+  ... Passed --  40.9  7  9374  527
+FAIL
+exit status 1
+FAIL	6.824/kvraft	61.048s

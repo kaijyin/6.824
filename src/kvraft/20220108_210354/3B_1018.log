@@ -1,0 +1,151 @@
+Test: restarts, snapshots, many clients (3B) ...
+runtime: VirtualAlloc of 24576 bytes failed with errno=1455
+fatal error: out of memory
+
+runtime stack:
+runtime.throw({0xe42456, 0xc0007cf000})
+	D:/ProgramFiles/Go/src/runtime/panic.go:1198 +0x76
+runtime.sysUsed(0xc0007ce000, 0x6000)
+	D:/ProgramFiles/Go/src/runtime/mem_windows.go:83 +0x1c9
+runtime.(*mheap).allocSpan(0xfbaaa0, 0x3, 0x0, 0x70)
+	D:/ProgramFiles/Go/src/runtime/mheap.go:1268 +0x3a5
+runtime.(*mheap).alloc.func1()
+	D:/ProgramFiles/Go/src/runtime/mheap.go:913 +0x69
+runtime.systemstack()
+	D:/ProgramFiles/Go/src/runtime/asm_amd64.s:383 +0x4e
+
+goroutine 6 [running]:
+runtime.systemstack_switch()
+	D:/ProgramFiles/Go/src/runtime/asm_amd64.s:350 fp=0xc000299798 sp=0xc000299790 pc=0xce76e0
+runtime.(*mheap).alloc(0x2b6d6e53d00, 0xc8de20, 0xff, 0x1)
+	D:/ProgramFiles/Go/src/runtime/mheap.go:907 +0x73 fp=0xc0002997e8 sp=0xc000299798 pc=0xca6793
+runtime.(*mcentral).grow(0x6000)
+	D:/ProgramFiles/Go/src/runtime/mcentral.go:241 +0x65 fp=0xc000299830 sp=0xc0002997e8 pc=0xc97d45
+runtime.(*mcentral).cacheSpan(0xfd02e0)
+	D:/ProgramFiles/Go/src/runtime/mcentral.go:161 +0x69e fp=0xc0002998a8 sp=0xc000299830 pc=0xc97b7e
+runtime.(*mcache).refill(0x2b6b1810108, 0x70)
+	D:/ProgramFiles/Go/src/runtime/mcache.go:162 +0xaf fp=0xc0002998f8 sp=0xc0002998a8 pc=0xc96d8f
+runtime.(*mcache).nextFree(0x2b6b1810108, 0x70)
+	D:/ProgramFiles/Go/src/runtime/malloc.go:880 +0x85 fp=0xc000299940 sp=0xc0002998f8 pc=0xc8ce85
+runtime.mallocgc(0x3000, 0xe2f560, 0x1)
+	D:/ProgramFiles/Go/src/runtime/malloc.go:1071 +0x4e8 fp=0xc0002999c0 sp=0xc000299940 pc=0xc8d508
+runtime.growslice(0xe2f560, {0xc000779000, 0x400, 0x200}, 0x201)
+	D:/ProgramFiles/Go/src/runtime/slice.go:267 +0x4ea fp=0xc000299a28 sp=0xc0002999c0 pc=0xccde6a
+6.824/porcupine.makeEntries({0xc0005fc000, 0x11e, 0x50000})
+	D:/Go/src/6.824/src/porcupine/checker.go:47 +0x168 fp=0xc000299b50 sp=0xc000299a28 pc=0xdebae8
+6.824/porcupine.checkOperations({0xe55d70, 0xe55da0, 0xe55d78, 0xe55d80, 0xe55db0, 0xe55d88, 0xe55d98}, {0xc00098a000, 0x1653, 0x1653}, ...)
+	D:/Go/src/6.824/src/porcupine/checker.go:365 +0x34b fp=0xc000299cc0 sp=0xc000299b50 pc=0xdedd0b
+6.824/porcupine.CheckOperationsVerbose(...)
+	D:/Go/src/6.824/src/porcupine/porcupine.go:20
+6.824/kvraft.GenericTest(0xc00012c820, {0xe40203, 0x2}, 0x14, 0x5, 0x0, 0x1, 0x0, 0x3e8, 0x0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:363 +0xb1e fp=0xc000299f20 sp=0xc000299cc0 pc=0xdf66de
+6.824/kvraft.TestSnapshotRecoverManyClients3B(0x0)
+	D:/Go/src/6.824/src/kvraft/test_test.go:695 +0x45 fp=0xc000299f70 sp=0xc000299f20 pc=0xdf74a5
+testing.tRunner(0xc00012c820, 0xe55d58)
+	D:/ProgramFiles/Go/src/testing/testing.go:1259 +0x102 fp=0xc000299fc0 sp=0xc000299f70 pc=0xd76802
+testing.(*T).Run·dwrap·21()
+	D:/ProgramFiles/Go/src/testing/testing.go:1306 +0x2a fp=0xc000299fe0 sp=0xc000299fc0 pc=0xd7750a
+runtime.goexit()
+	D:/ProgramFiles/Go/src/runtime/asm_amd64.s:1581 +0x1 fp=0xc000299fe8 sp=0xc000299fe0 pc=0xce9a61
+created by testing.(*T).Run
+	D:/ProgramFiles/Go/src/testing/testing.go:1306 +0x35a
+
+goroutine 1 [chan receive]:
+testing.(*T).Run(0xc00012c680, {0xe4866f, 0xcec313}, 0xe55d58)
+	D:/ProgramFiles/Go/src/testing/testing.go:1307 +0x375
+testing.runTests.func1(0xc00012c680)
+	D:/ProgramFiles/Go/src/testing/testing.go:1598 +0x6e
+testing.tRunner(0xc00012c680, 0xc00007dd18)
+	D:/ProgramFiles/Go/src/testing/testing.go:1259 +0x102
+testing.runTests(0xc000138000, {0xf9a6e0, 0x2, 0x2}, {0xd0d82d, 0xe428c1, 0xfa2b60})
+	D:/ProgramFiles/Go/src/testing/testing.go:1596 +0x43f
+testing.(*M).Run(0xc000138000)
+	D:/ProgramFiles/Go/src/testing/testing.go:1504 +0x51d
+main.main()
+	_testmain.go:45 +0x14b
+
+goroutine 7 [select]:
+6.824/labrpc.MakeNetwork.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:153 +0xbe
+created by 6.824/labrpc.MakeNetwork
+	D:/Go/src/6.824/src/labrpc/labrpc.go:151 +0x17b
+
+goroutine 117760 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc000182150)
+	D:/Go/src/6.824/src/kvraft/server.go:103 +0x76
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:173 +0x269
+
+goroutine 117757 [sleep]:
+time.Sleep(0x93d1cc0)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014a4b0)
+	D:/Go/src/6.824/src/raft/raft.go:612 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:653 +0x27b
+
+goroutine 117761 [sleep]:
+time.Sleep(0x10cefa80)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014a690)
+	D:/Go/src/6.824/src/raft/raft.go:612 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:653 +0x27b
+
+goroutine 118407 [sleep]:
+time.Sleep(0x4c4b400)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).heartTicker(0xc00014a4b0, 0xc000054190)
+	D:/Go/src/6.824/src/raft/raft.go:603 +0x2c
+created by 6.824/raft.(*Raft).BeLeader
+	D:/Go/src/6.824/src/raft/raft.go:595 +0xcf
+
+goroutine 117811 [sleep]:
+time.Sleep(0xee6b280)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014a780)
+	D:/Go/src/6.824/src/raft/raft.go:612 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:653 +0x27b
+
+goroutine 117758 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc0004ef260)
+	D:/Go/src/6.824/src/kvraft/server.go:103 +0x76
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:173 +0x269
+
+goroutine 117810 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc000183030)
+	D:/Go/src/6.824/src/kvraft/server.go:103 +0x76
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:173 +0x269
+
+goroutine 117813 [sleep]:
+time.Sleep(0x1091f180)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014a870)
+	D:/Go/src/6.824/src/raft/raft.go:612 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:653 +0x27b
+
+goroutine 117814 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc0001a6e00)
+	D:/Go/src/6.824/src/kvraft/server.go:103 +0x76
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:173 +0x269
+
+goroutine 117759 [sleep]:
+time.Sleep(0x11b3dc40)
+	D:/ProgramFiles/Go/src/runtime/time.go:193 +0x133
+6.824/raft.(*Raft).electionTicker(0xc00014a5a0)
+	D:/Go/src/6.824/src/raft/raft.go:612 +0x95
+created by 6.824/raft.Make
+	D:/Go/src/6.824/src/raft/raft.go:653 +0x27b
+
+goroutine 117812 [chan receive]:
+6.824/kvraft.(*KVServer).doExecute(0xc000183f10)
+	D:/Go/src/6.824/src/kvraft/server.go:103 +0x76
+created by 6.824/kvraft.StartKVServer
+	D:/Go/src/6.824/src/kvraft/server.go:173 +0x269
+exit status 2
+FAIL	6.824/kvraft	20.131s

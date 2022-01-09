@@ -1,6 +1,7 @@
 package shardkv
 
 import (
+	"6.824/shardctrler"
 	"log"
 )
 
@@ -15,8 +16,10 @@ import (
 
 const (
 	OK             = "OK"
+	ErrTimeOut     =  "ErrTimeOut"
 	ErrNoKey       = "ErrNoKey"
 	ErrWrongGroup  = "ErrWrongGroup"
+	ErrConfigToOld = "ErrConfigToOld"
 	ErrWrongLeader = "ErrWrongLeader"
 )
 
@@ -26,27 +29,51 @@ const (
 	Gets    = 1
 	Puts    = 2
 	Appends = 3
+	FetchShard  = 4
+	DeleteShard = 5
+	InstallShard = 6
+	InstallConfig = 7
+)
+const (
 )
 
-type RequestArgs struct {
-	ISCK bool
-	Shard   int
+type Args struct {
 
-	ConfigNum int
+	Type    int
+	InstallInvalid bool
+	ShardData     []byte
+	Config shardctrler.Config
 
+	Shard int
+
+	RemoteInvalid bool
+	ConfigNum     int
+
+	RequestInvalid bool
 	CkId    int64
 	CkIndex uint32
-	Type    uint8 // 0 => get, 1 => put, 2 => append
 	Key     string
 	Value   string
 }
 
-type ExecuteReply struct {
-	Err
-	Value string
+func (a *Args) Copy() Args{
+     arg:=*a
+     if a.Type==InstallConfig{
+     	arg.Config=a.Config.Copy()
+	 }
+	 if a.Type==InstallShard {
+	 	arg.ShardData =make([]byte,len(a.ShardData))
+	 	copy(arg.ShardData,a.ShardData)
+	 }
+	 return arg
+}
 
-	ShardData map[string]string
-	ShardLastCkIndex map[int64]uint32
+
+
+type Reply struct {
+	Err
+	Value     string
+	ShardData []byte
 }
 
 const Debug = true

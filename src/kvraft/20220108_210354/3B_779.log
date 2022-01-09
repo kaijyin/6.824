@@ -1,0 +1,34 @@
+go tool compile: exit status 2
+fatal error: out of memory allocating heap arena map
+
+runtime stack:
+runtime.throw({0x112a307, 0x0})
+	c:/go/src/runtime/panic.go:1198 +0x76 fp=0x89b3bff648 sp=0x89b3bff618 pc=0x848ff6
+runtime.(*mheap).sysAlloc(0x17bb5a0, 0x0)
+	c:/go/src/runtime/malloc.go:737 +0x31a fp=0x89b3bff6e8 sp=0x89b3bff648 pc=0x81c93a
+runtime.(*mheap).grow(0x17bb5a0, 0x2203e050000)
+	c:/go/src/runtime/mheap.go:1347 +0x73 fp=0x89b3bff750 sp=0x89b3bff6e8 pc=0x8376b3
+runtime.(*mheap).allocSpan(0x17bb5a0, 0x1, 0x0, 0x25)
+	c:/go/src/runtime/mheap.go:1179 +0x165 fp=0x89b3bff7c0 sp=0x89b3bff750 pc=0x8371c5
+runtime.(*mheap).alloc.func1()
+	c:/go/src/runtime/mheap.go:913 +0x69 fp=0x89b3bff808 sp=0x89b3bff7c0 pc=0x836c69
+runtime.(*mheap).alloc(0x0, 0x0, 0x8c, 0x1)
+	c:/go/src/runtime/mheap.go:907 +0x73 fp=0x89b3bff858 sp=0x89b3bff808 pc=0x836b33
+runtime.(*mcentral).grow(0x87af20)
+	c:/go/src/runtime/mcentral.go:241 +0x65 fp=0x89b3bff8a0 sp=0x89b3bff858 pc=0x8280e5
+runtime.(*mcentral).cacheSpan(0x17cd5a0)
+	c:/go/src/runtime/mcentral.go:161 +0x69e fp=0x89b3bff918 sp=0x89b3bff8a0 pc=0x827f1e
+runtime.(*mcache).refill(0x2203e210108, 0x25)
+	c:/go/src/runtime/mcache.go:162 +0xaf fp=0x89b3bff968 sp=0x89b3bff918 pc=0x82712f
+runtime.(*mcache).nextFree(0x2203e210108, 0x25)
+	c:/go/src/runtime/malloc.go:880 +0x85 fp=0x89b3bff9b0 sp=0x89b3bff968 pc=0x81cea5
+runtime.mallocgc(0x100, 0x1096a80, 0x1)
+	c:/go/src/runtime/malloc.go:1071 +0x4e8 fp=0x89b3bffa30 sp=0x89b3bff9b0 pc=0x81d528
+runtime.newobject(0x53a5c54a56c6)
+	c:/go/src/runtime/malloc.go:1228 +0x27 fp=0x89b3bffa58 sp=0x89b3bffa30 pc=0x81da47
+runtime.mcommoninit(0x1792260, 0xffffffffffffffff)
+	c:/go/src/runtime/proc.go:819 +0x185 fp=0x89b3bffa98 sp=0x89b3bffa58 pc=0x84ca85
+runtime.schedinit()
+	c:/go/src/runtime/proc.go:691 +0x85 fp=0x89b3bffaf0 sp=0x89b3bffa98 pc=0x84c605
+runtime.rt0_go()
+	c:/go/src/runtime/asm_amd64.s:212 +0x13d fp=0x89b3bffaf8 sp=0x89b3bffaf0 pc=0x8771fd

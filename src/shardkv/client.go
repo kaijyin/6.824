@@ -10,7 +10,6 @@ package shardkv
 
 import (
 	"6.824/labrpc"
-	"sync"
 )
 import "crypto/rand"
 import "math/big"
@@ -44,9 +43,8 @@ type Clerk struct {
 	make_end func(string) *labrpc.ClientEnd
 	// You will have to modify this struct.
 
-	me    int64
+	me             int64
 	lastShardIndex map[int]uint32
-	mu         sync.Mutex
 }
 
 //
@@ -62,37 +60,38 @@ func MakeClerk(ctrlers []*labrpc.ClientEnd, make_end func(string) *labrpc.Client
 	ck := new(Clerk)
 	ck.sm = shardctrler.MakeClerk(ctrlers)
 	ck.make_end = make_end
-	ck.lastShardIndex=make(map[int]uint32)
+	ck.lastShardIndex = make(map[int]uint32)
 	ck.me = nrand()
 	return ck
 }
-
-func (ck *Clerk) Execute(args *RequestArgs, reply *ExecuteReply) {
+func (ck *Clerk) execute(args *Args, reply *Reply) {
 	time.Sleep(time.Microsecond)
-	shard:=args.Shard
+	shard := args.Shard
 	for {
 		gid := ck.config.Shards[shard]
 		if servers, ok := ck.config.Groups[gid]; ok {
 			for si := 0; si < len(servers); si++ {
 				srv := ck.make_end(servers[si])
-				ch:=make(chan ExecuteReply,1)
+				ch := make(chan Reply, 1)
+				arg:=args.Copy()
 				go func() {
-					reply:=ExecuteReply{}
-					ok := srv.Call("ShardKV.Get", &args, &reply)
+					reply := Reply{}
+					ok := srv.Call("ShardKV.Do", &arg, &reply)
 					if ok {
-						ch<-reply
+						ch <- reply
 					}
 				}()
 				select {
 				case <-time.After(time.Millisecond * 300):
 				case *reply = <-ch:
 				}
-				if reply.Err==OK {
+				if reply.Err == OK {
 					return
-				}else if reply.Err==ErrWrongGroup{
+				} else if reply.Err == ErrWrongGroup {
 					break
 				}
 			}
+			ck.config = ck.sm.Query(-1)
 		}
 		time.Sleep(100 * time.Millisecond)
 		// ask controler for the latest configuration.
@@ -100,50 +99,45 @@ func (ck *Clerk) Execute(args *RequestArgs, reply *ExecuteReply) {
 	}
 }
 func (ck *Clerk) Get(key string) string {
-	ck.mu.Lock()
-	defer ck.mu.Unlock()
-	shard:=key2shard(key)
+	shard := key2shard(key)
 	ck.lastShardIndex[shard]++
-	args := RequestArgs{
-		Type:    Gets,
-		Key:     key,
-		CkId:    ck.me,
-		CkIndex: ck.lastShardIndex[shard],
-		Shard: shard,
+	args := Args{
+		Shard:          shard,
+		RequestInvalid: true,
+		Type:           Gets,
+		Key:            key,
+		CkId:           ck.me,
+		CkIndex:        ck.lastShardIndex[shard],
 	}
-	reply := ExecuteReply{}
-	ck.Execute(&args, &reply)
+	reply := Reply{}
+	ck.execute(&args, &reply)
 	return reply.Value
 }
 func (ck *Clerk) Put(key string, value string) {
-	ck.mu.Lock()
-	defer ck.mu.Unlock()
-	shard:=key2shard(key)
+	shard := key2shard(key)
 	ck.lastShardIndex[shard]++
-	args := RequestArgs{
-		Type:    Puts,
-		Key:     key,
-		Value:   value,
-		CkId:    ck.me,
-		CkIndex: ck.lastShardIndex[shard],
-		Shard: shard,
+	args := Args{Shard: shard,
+		RequestInvalid: true,
+		Type:           Puts,
+		Key:            key,
+		Value:          value,
+		CkId:           ck.me,
+		CkIndex:        ck.lastShardIndex[shard],
 	}
-	reply := ExecuteReply{}
-	ck.Execute(&args, &reply)
+	reply := Reply{}
+	ck.execute(&args, &reply)
 }
 func (ck *Clerk) Append(key string, value string) {
-	ck.mu.Lock()
-	defer ck.mu.Unlock()
-	shard:=key2shard(key)
+	shard := key2shard(key)
 	ck.lastShardIndex[shard]++
-	args := RequestArgs{
-		Type:    Appends,
-		Key:     key,
-		Value:   value,
-		CkId:    ck.me,
-		CkIndex: ck.lastShardIndex[shard],
-		Shard: shard,
+	args := Args{Shard: shard,
+		RequestInvalid: true,
+		Type:           Appends,
+		Key:            key,
+		Value:          value,
+		CkId:           ck.me,
+		CkIndex:        ck.lastShardIndex[shard],
 	}
-	reply := ExecuteReply{}
-	ck.Execute(&args, &reply)
+	reply := Reply{}
+	ck.execute(&args, &reply)
 }

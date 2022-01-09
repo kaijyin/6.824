@@ -1,0 +1,13 @@
+Test: restarts, snapshots, many clients (3B) ...
+--- FAIL: TestSnapshotRecoverManyClients3B (6.63s)
+    test_test.go:287: get wrong value, key 17, wanted:
+        x 17 0 yx 17 1 yx 17 2 yx 17 3 yx 17 4 yx 17 5 yx 17 6 yx 17 7 yx 17 8 yx 17 9 yx 17 10 yx 17 11 yx 17 12 yx 17 13 yx 17 14 yx 17 15 yx 17 16 yx 17 17 y
+        , got
+        x 17 0 yx 17 1 yx 17 2 yx 17 3 yx 17 4 yx 17 5 yx 17 6 yx 17 7 yx 17 8 yx 17 9 yx 17 10 yx 17 11 yx 17 12 yx 17 13 yx 17 14 yx 17 15 yx 17 16 y
+    test_test.go:120: failure
+    test_test.go:138: 17 missing element x 17 17 y in Append result x 17 0 yx 17 1 yx 17 2 yx 17 3 yx 17 4 yx 17 5 yx 17 6 yx 17 7 yx 17 8 yx 17 9 yx 17 10 yx 17 11 yx 17 12 yx 17 13 yx 17 14 yx 17 15 yx 17 16 y
+Test: unreliable net, restarts, partitions, snapshots, random keys, many clients (3B) ...
+  ... Passed --  39.6  7  9472  560
+FAIL
+exit status 1
+FAIL	6.824/kvraft	46.346s

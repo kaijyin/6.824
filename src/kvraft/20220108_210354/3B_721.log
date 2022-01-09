@@ -1,0 +1,22 @@
+Test: restarts, snapshots, many clients (3B) ...
+panic: runtime error: slice bounds out of range [:824636713008] with capacity 22
+
+goroutine 57041 [running]:
+6.824/raft.(*Raft).CutLog(...)
+	D:/Go/src/6.824/src/raft/raft.go:104
+6.824/raft.(*Raft).AppendLog(0xc000148780, 0xc00037e360, 0xc0003f0ee0)
+	D:/Go/src/6.824/src/raft/raft.go:381 +0x69c
+reflect.Value.call({0xc000052300, 0xc0000073b0, 0xc000179b10}, {0x3d0476, 0x4}, {0xc000179c68, 0x3, 0xc000179b40})
+	D:/ProgramFiles/Go/src/reflect/value.go:543 +0x814
+reflect.Value.Call({0xc000052300, 0xc0000073b0, 0xc0000078f0}, {0xc000179c68, 0x3, 0x3})
+	D:/ProgramFiles/Go/src/reflect/value.go:339 +0xc5
+6.824/labrpc.(*Service).dispatch(0xc00023c580, {0x3d26f8, 0x9}, {{0x39c880, 0xc0004da6a0}, {0x3d26f3, 0xe}, {0x41e9e0, 0x394980}, {0xc000597340, ...}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:496 +0x39d
+6.824/labrpc.(*Server).dispatch(0xc00035b620, {{0x39c880, 0xc0004da6a0}, {0x3d26f3, 0xe}, {0x41e9e0, 0x394980}, {0xc000597340, 0x1cd, 0x28a}, ...})
+	D:/Go/src/6.824/src/labrpc/labrpc.go:420 +0x1fe
+6.824/labrpc.(*Network).processReq.func1()
+	D:/Go/src/6.824/src/labrpc/labrpc.go:240 +0x58
+created by 6.824/labrpc.(*Network).processReq
+	D:/Go/src/6.824/src/labrpc/labrpc.go:239 +0x1df
+exit status 2
+FAIL	6.824/kvraft	10.848s

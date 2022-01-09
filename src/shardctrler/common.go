@@ -31,7 +31,18 @@ type Config struct {
 	Shards [NShards]int     // shard -> gid
 	Groups map[int][]string // gid -> servers[]
 }
-
+func (c *Config)Copy()Config{
+	config:=Config{
+		Num:    c.Num,
+		Shards: c.Shards,
+	}
+	config.Groups=make(map[int][]string)
+	for g,names:=range c.Groups{
+		config.Groups[g]=make([]string,len(names))
+		copy(config.Groups[g],names)
+	}
+	return config
+}
 func (c *Config) Print()  {
 	DPrintf("-------Config-----------")
 	DPrintf("num:%d",c.Num)
@@ -43,7 +54,6 @@ func (c *Config) Print()  {
 	for g,_:=range c.Groups{
 		DPrintf("%d",g)
 	}
-
 }
 const (
 	OK = "OK"

@@ -1,0 +1,13 @@
+Test: restarts, snapshots, many clients (3B) ...
+--- FAIL: TestSnapshotRecoverManyClients3B (6.76s)
+    test_test.go:287: get wrong value, key 15, wanted:
+        x 15 0 yx 15 1 yx 15 2 yx 15 3 yx 15 4 yx 15 5 yx 15 6 yx 15 7 yx 15 8 yx 15 9 yx 15 10 yx 15 11 yx 15 12 yx 15 13 yx 15 14 yx 15 15 yx 15 16 yx 15 17 yx 15 18 yx 15 19 yx 15 20 yx 15 21 yx 15 22 yx 15 23 yx 15 24 yx 15 25 yx 15 26 yx 15 27 yx 15 28 yx 15 29 yx 15 30 yx 15 31 yx 15 32 yx 15 33 yx 15 34 yx 15 35 yx 15 36 yx 15 37 yx 15 38 yx 15 39 yx 15 40 yx 15 41 yx 15 42 yx 15 43 y
+        , got
+        x 15 0 yx 15 1 yx 15 2 yx 15 3 yx 15 4 yx 15 5 yx 15 6 yx 15 7 yx 15 8 yx 15 9 yx 15 10 yx 15 11 yx 15 12 yx 15 13 yx 15 14 yx 15 15 yx 15 16 yx 15 17 yx 15 18 yx 15 19 yx 15 20 yx 15 21 yx 15 22 yx 15 23 yx 15 24 yx 15 25 yx 15 26 yx 15 27 yx 15 28 yx 15 29 yx 15 30 yx 15 31 yx 15 32 yx 15 33 yx 15 34 yx 15 35 yx 15 36 yx 15 37 yx 15 38 yx 15 39 yx 15 40 yx 15 41 yx 15 42 y
+    test_test.go:120: failure
+    test_test.go:138: 15 missing element x 15 43 y in Append result x 15 0 yx 15 1 yx 15 2 yx 15 3 yx 15 4 yx 15 5 yx 15 6 yx 15 7 yx 15 8 yx 15 9 yx 15 10 yx 15 11 yx 15 12 yx 15 13 yx 15 14 yx 15 15 yx 15 16 yx 15 17 yx 15 18 yx 15 19 yx 15 20 yx 15 21 yx 15 22 yx 15 23 yx 15 24 yx 15 25 yx 15 26 yx 15 27 yx 15 28 yx 15 29 yx 15 30 yx 15 31 yx 15 32 yx 15 33 yx 15 34 yx 15 35 yx 15 36 yx 15 37 yx 15 38 yx 15 39 yx 15 40 yx 15 41 yx 15 42 y
+Test: unreliable net, restarts, partitions, snapshots, random keys, many clients (3B) ...
+  ... Passed --  41.9  7  8905  391
+FAIL
+exit status 1
+FAIL	6.824/kvraft	48.850s

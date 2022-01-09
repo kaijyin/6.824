@@ -27,7 +27,6 @@ type KVServer struct {
 
 	chMap sync.Map
 	// Your definitions here.
-	curIndex    int
 	kvMap       map[string]string
 	ckLastIndex map[int64]uint32
 }
@@ -78,17 +77,16 @@ func (kv *KVServer) killed() bool {
 	z := atomic.LoadInt32(&kv.dead)
 	return z == 1
 }
-func (kv *KVServer) SnapShot() {
+func (kv *KVServer) SnapShot(index int) {
 	if kv.killed() {
 		return
 	}
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
-	e.Encode(kv.curIndex)
 	e.Encode(kv.kvMap)
 	e.Encode(kv.ckLastIndex)
 	//不开线程去执行snapshot,因为可能会导致多次执行,增加负担
-	kv.rf.Snapshot(kv.curIndex, w.Bytes())
+	kv.rf.Snapshot(index, w.Bytes())
 }
 func (kv *KVServer) InstallSnapShot(snapshot []byte) {
 	if snapshot == nil || len(snapshot) < 1 {
@@ -96,10 +94,8 @@ func (kv *KVServer) InstallSnapShot(snapshot []byte) {
 	}
 	r := bytes.NewBuffer(snapshot)
 	d := labgob.NewDecoder(r)
-	kv.curIndex = 0
 	kv.kvMap = nil
 	kv.ckLastIndex = nil
-	d.Decode(&kv.curIndex)
 	d.Decode(&kv.kvMap)
 	d.Decode(&kv.ckLastIndex)
 }
@@ -108,8 +104,7 @@ func (kv *KVServer) doExecute() {
 		if kv.killed() {
 			return
 		}
-		if args.CommandValid && kv.curIndex+1 == args.CommandIndex { //序列化
-			kv.curIndex = args.CommandIndex
+		if args.CommandValid { //序列化
 			op := args.Command.(Op)
 			ch, ok := kv.chMap.Load(op.Time)
 			reply := ExecuteReply{}
@@ -128,7 +123,7 @@ func (kv *KVServer) doExecute() {
 				reply.Value = kv.kvMap[op.Key]
 			}
 			if kv.maxraftstate != -1 && kv.rf.GetRaftStateSize() >= kv.maxraftstate {
-				kv.SnapShot()
+				kv.SnapShot(args.CommandIndex)
 			}
 			//可能kv index之前的并没有被实际执行,而是直接安装snapshot,所以还是需要把等待的请求给去除掉
 			if ok && kv.me == op.Server {
