@@ -208,22 +208,11 @@ func (sc *ShardCtrler) leave(args LeaveArgs) {
 	sc.configs = append(sc.configs, newConfig)
 }
 func (sc *ShardCtrler) query(args QueryArgs) (config Config) { //深拷贝
-	ans := Config{}
-	config.Groups = make(map[int][]string)
 	if args.Num == -1 || args.Num >= len(sc.configs) {
-		ans = sc.configs[len(sc.configs)-1]
+		return sc.configs[len(sc.configs)-1].Copy()
 	} else {
-		ans = sc.configs[args.Num]
+		return sc.configs[args.Num].Copy()
 	}
-	config.Num = ans.Num
-	for i, v := range ans.Shards {
-		config.Shards[i] = v
-	}
-	for gid, name := range ans.Groups {
-		config.Groups[gid] = make([]string, len(name))
-		copy(config.Groups[gid], name)
-	}
-	return
 }
 
 //

@@ -17,6 +17,7 @@ import (
 const (
 	OK             = "OK"
 	ErrTimeOut     =  "ErrTimeOut"
+	ErrNoData      =  "ErrNoData"
 	ErrNoKey       = "ErrNoKey"
 	ErrWrongGroup  = "ErrWrongGroup"
 	ErrConfigToOld = "ErrConfigToOld"

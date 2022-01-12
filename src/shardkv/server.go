@@ -33,83 +33,14 @@ type ShardKV struct {
 	shardMu    [shardctrler.NShards]sync.Mutex
 	shardChMap [shardctrler.NShards]sync.Map
 
-	config             shardctrler.Config
-	shardLastConfigNum map[int]int
-	managedShards      map[int]bool
-	kvMap              map[int]map[string]string
-	shardLastIndex     map[int]map[int64]uint32
+	config        shardctrler.Config
+	managedShards map[int]bool
+
+	shardConfigNum map[int]int
+	kvMap          map[int]map[string]string
+	shardLastIndex map[int]map[int64]uint32
 }
 
-func (kv *ShardKV) FetchShardData(shard int) (reply Reply) {
-	args := Args{
-		RemoteInvalid: true,
-		Type: FetchShard,
-		Shard:         shard,
-		ConfigNum:     kv.config.Num,
-	}
-	kv.shardExecute(&args, &reply)
-	return
-}
-func (kv *ShardKV) InstallShardData(shard int, data []byte) (reply Reply) {
-	args := Args{
-		InstallInvalid: true,
-		Type: InstallShard,
-		Shard:         shard,
-		ConfigNum:     kv.config.Num,
-	}
-	//深拷贝
-	args.ShardData = make([]byte, len(data))
-	copy(args.ShardData, data)
-	kv.Do(&args, &reply)
-	return reply
-}
-func (kv *ShardKV) InstallConfig(config shardctrler.Config) (reply Reply) { //确认更新config
-	args := Args{
-		InstallInvalid: true,
-		Type: InstallConfig,
-		Config:        config.Copy(), //深拷贝
-	}
-	kv.Do(&args, &reply)
-	return reply
-}
-func (kv *ShardKV) DeleteShardData(shard int) (reply Reply) {
-	args := Args{
-		RemoteInvalid: true,
-		Type: DeleteShard,
-		Shard:         shard,
-		ConfigNum:     kv.config.Num,
-	}
-	kv.shardExecute(&args, &reply)
-	return
-}
-func (kv *ShardKV) shardExecute(args *Args, reply *Reply) {
-	shard := args.Shard
-	desGid := kv.config.Shards[shard]
-	for {
-		if servers, ok := kv.config.Groups[desGid]; ok {
-			for si := 0; si < len(servers); si++ {
-				srv := kv.make_end(servers[si])
-				ch := make(chan Reply, 1)
-				//深拷贝,对每个service发送的请求一定要是单独的
-				arg := args.Copy()
-				go func() {
-					reply := Reply{}
-					ok := srv.Call("ShardKV.Do", &arg, &reply)
-					if ok {
-						ch <- reply
-					}
-				}()
-				select {
-				case <-time.After(time.Millisecond * 300):
-				case *reply = <-ch:
-				}
-				if reply.Err == OK || kv.killed() {
-					return
-				}
-			}
-		}
-	}
-}
 func (kv *ShardKV) Do(args *Args, reply *Reply) {
 	if kv.killed() {
 		return
@@ -134,7 +65,7 @@ func (kv *ShardKV) Do(args *Args, reply *Reply) {
 	select {
 	case <-time.After(time.Millisecond * 500):
 		reply.Err = ErrTimeOut
-	case *reply = <-ch: //do execute向chenel发送reply之后就删除id的映射
+	case *reply = <-ch: //do execute向chanel发送reply之后就删除id的映射
 	}
 }
 
@@ -146,6 +77,7 @@ func (kv *ShardKV) SnapShot(index int) {
 	e := labgob.NewEncoder(w)
 	e.Encode(kv.kvMap)
 	e.Encode(kv.shardLastIndex)
+	e.Encode(kv.shardConfigNum)
 	e.Encode(kv.managedShards)
 	e.Encode(kv.config)
 	//不开线程去执行snapshot,因为可能会导致多次执行,增加负担
@@ -159,6 +91,7 @@ func (kv *ShardKV) InstallSnapShot(snapshot []byte) {
 	d := labgob.NewDecoder(r)
 	kv.kvMap = nil
 	kv.shardLastIndex = nil
+	kv.shardConfigNum = nil
 	kv.managedShards = nil
 	kv.config = shardctrler.Config{
 		Num:    0,
@@ -167,6 +100,7 @@ func (kv *ShardKV) InstallSnapShot(snapshot []byte) {
 	}
 	d.Decode(&kv.kvMap)
 	d.Decode(&kv.shardLastIndex)
+	d.Decode(&kv.shardConfigNum)
 	d.Decode(&kv.managedShards)
 	d.Decode(&kv.config)
 }
@@ -175,27 +109,63 @@ func (kv *ShardKV) getShardData(shard int) []byte {
 	e := labgob.NewEncoder(w)
 	e.Encode(kv.kvMap[shard])
 	e.Encode(kv.shardLastIndex[shard])
+	e.Encode(kv.shardConfigNum[shard])
 	return w.Bytes()
 }
+
+//数据已经确定转移,清空该shard的所有数据
+func (kv *ShardKV) deleteShard(shard int) {
+	delete(kv.kvMap, shard)
+	delete(kv.shardLastIndex, shard)
+	delete(kv.shardConfigNum, shard)
+}
+
+//安装该shard的数据,config num在确认config的时候才更改
 func (kv *ShardKV) installShard(shard int, shardData []byte) {
 	if shardData == nil || len(shardData) < 1 {
+		//DPrintf("gid:%d %d install shard :%d",kv.gid,kv.me,shard)
 		kv.kvMap[shard] = make(map[string]string)
 		kv.shardLastIndex[shard] = make(map[int64]uint32)
+		kv.shardConfigNum[shard] = 0
 		return
 	}
 	r := bytes.NewBuffer(shardData)
 	d := labgob.NewDecoder(r)
-	kv.kvMap[shard] = nil
-	kv.shardLastIndex[shard] = nil
+    var	kvmap map[string]string
+	var lastIndex map[int64]uint32
+	cfgNum:= 0
 	//不行就换深拷贝,或者把数据传递改为map,不用Byte
-	d.Decode(kv.kvMap[shard])
-	d.Decode(kv.shardLastIndex[shard])
+	d.Decode(&kvmap)
+	d.Decode(&lastIndex)
+	d.Decode(&cfgNum)
+	kv.kvMap[shard]=kvmap
+	kv.shardLastIndex[shard]=lastIndex
+	kv.shardConfigNum[shard]=cfgNum
+}
+
+//确认config,分片数据已经安装成功,真正开启服务,并设置shard config2
+func (kv *ShardKV) installConfig(config shardctrler.Config) {
+	DPrintf("gid:%d %d install config :%d",kv.gid,kv.me,config.Num)
+	config.Print()
+	kv.config = config.Copy()
+	for sd, g := range kv.config.Shards {
+		if g == kv.gid {
+			kv.managedShards[sd] = true
+			//更新config时,更新该分区的config num
+			kv.shardConfigNum[sd] = kv.config.Num
+		}
+		//else {
+		//	//是否获取新的config之后马上暂定原有分区的服务？
+		//	delete(kv.managedShards,sd)
+		//}
+	}
 }
 func (kv *ShardKV) doExecute() {
 	for args := range kv.applyCh {
 		if kv.killed() {
 			return
 		}
+		DPrintf("gid:%d %d recive arg",kv.gid,kv.me)
 		if args.CommandValid { //序列化
 			op := args.Command.(Op)
 			shard := op.Shard
@@ -203,16 +173,10 @@ func (kv *ShardKV) doExecute() {
 			reply := Reply{}
 			reply.Err = OK
 			if op.InstallInvalid {
-				if op.Type == InstallConfig &&kv.kvMap[shard]==nil{
+				if op.Type == InstallShard && kv.kvMap[shard] == nil {
 					kv.installShard(shard, op.ShardData)
 				} else if op.Type == InstallConfig {
-					kv.config = op.Config
-					for sd, g := range kv.config.Shards {
-						if g == kv.gid {
-							kv.managedShards[g] = true
-							kv.shardLastConfigNum[sd] = kv.config.Num
-						}
-					}
+					kv.installConfig(op.Config)
 				}
 			}
 			if op.RemoteInvalid {
@@ -220,22 +184,20 @@ func (kv *ShardKV) doExecute() {
 					reply.Err = ErrConfigToOld
 					go kv.fetchNewConfig()
 				} else {
-					lastCigNum := kv.shardLastConfigNum[shard]
-					if lastCigNum+1 == op.ConfigNum {
-						kv.shardLastConfigNum[shard] = op.ConfigNum
-						if op.Type == DeleteShard { //删除实际的数据
-							delete(kv.shardLastIndex, shard)
-							delete(kv.kvMap, shard)
+					if kv.shardConfigNum[shard] == op.ConfigNum {//shard数据存在,并且是该num下的请求
+						if op.Type == FetchShard && ok && op.Server == kv.me {
+							reply.ShardData = kv.getShardData(shard)
+							delete(kv.managedShards, shard) //别人获取后自己不再管理
+						} else if op.Type == DeleteShard { //删除实际的数据,在配置没有确认前可以重复删除
+							kv.deleteShard(shard)
 						}
-					}
-					if op.Type == FetchShard && kv.kvMap[shard] != nil && ok && op.Server == kv.me {
-						reply.ShardData = kv.getShardData(shard)
-						delete(kv.managedShards, shard) //别人获取后自己不再管理
 					}
 				}
 			}
 			if op.RequestInvalid {
+				//DPrintf("gid:%d %d handle req shard %d",kv.gid,kv.me,shard)
 				if !kv.managedShards[shard] { //不再管理该分区
+					//DPrintf("gid:%d %d dont manage shard %d",kv.gid,kv.me,shard)
 					reply.Err = ErrWrongGroup
 				} else {
 					lastMap := kv.shardLastIndex[shard] //引用传递,直接用
@@ -259,6 +221,7 @@ func (kv *ShardKV) doExecute() {
 			if ok && kv.me == op.Server {
 				ch.(chan Reply) <- reply
 			}
+			DPrintf("gid:%d %d arg finish",kv.gid,kv.me)
 		} else if args.SnapshotValid && kv.rf.CondInstallSnapshot(args.SnapshotTerm, args.SnapshotIndex, args.Snapshot) {
 			// 必须先安装日志,再改具体的kv存储
 			kv.InstallSnapShot(args.Snapshot)
@@ -266,17 +229,96 @@ func (kv *ShardKV) doExecute() {
 	}
 }
 
+func (kv *ShardKV) FetchShardData(shard int) (reply Reply) {
+	args := Args{
+		RemoteInvalid: true,
+		Type:          FetchShard,
+		Shard:         shard,
+		ConfigNum:     kv.config.Num,
+	}
+	kv.shardExecute(&args, &reply)
+	return
+}
+func (kv *ShardKV) InstallShardData(shard int, data []byte) (reply Reply) {
+	args := Args{
+		InstallInvalid: true,
+		Type:           InstallShard,
+		Shard:          shard,
+		ConfigNum:      kv.config.Num,
+	}
+	//深拷贝
+	args.ShardData = make([]byte, len(data))
+	copy(args.ShardData, data)
+	kv.Do(&args, &reply)
+	return reply
+}
+func (kv *ShardKV) InstallConfig(config shardctrler.Config) (reply Reply) { //确认更新config
+	args := Args{
+		InstallInvalid: true,
+		Type:           InstallConfig,
+		Config:         config.Copy(), //深拷贝
+	}
+	kv.Do(&args, &reply)
+	return reply
+}
+func (kv *ShardKV) DeleteShardData(shard int) (reply Reply) {
+	args := Args{
+		RemoteInvalid: true,
+		Type:          DeleteShard,
+		Shard:         shard,
+		ConfigNum:     kv.config.Num,
+	}
+	kv.shardExecute(&args, &reply)
+	return
+}
+func (kv *ShardKV) shardExecute(args *Args, reply *Reply) {
+	if _,isLeader:=kv.rf.GetState();!isLeader{
+		reply.Err=ErrWrongLeader
+		return
+	}
+	shard := args.Shard
+	desGid := kv.config.Shards[shard]
+	for {
+		if servers, ok := kv.config.Groups[desGid]; ok {
+			for si := 0; si < len(servers); si++ {
+				srv := kv.make_end(servers[si])
+				ch := make(chan Reply, 1)
+				//深拷贝,对每个service发送的请求一定要是单独的
+				arg := args.Copy()
+				go func() {
+					reply := Reply{}
+					ok := srv.Call("ShardKV.Do", &arg, &reply)
+					if ok {
+						ch <- reply
+					}
+				}()
+				select {
+				case <-time.After(time.Millisecond * 300):
+				case *reply = <-ch:
+				}
+				if reply.Err == OK || kv.killed() {
+					return
+				}
+				if _,isLeader:=kv.rf.GetState();!isLeader{
+					reply.Err=ErrWrongLeader
+					return
+				}
+			}
+		}
+	}
+}
 //只需添加完当前一轮config新管理的shards,当前config就算完成(更新config num)
 func (kv *ShardKV) fetchNewConfig() {
 	kv.fechmu.Lock()
 	defer kv.fechmu.Unlock()
-	if _, ok := kv.rf.GetState(); !ok { //不是leader不处理
+	if _, isleader := kv.rf.GetState(); !isleader { //不是leader不处理
 		return
 	}
 	newConfig := kv.mck.Query(kv.config.Num + 1)
 	if newConfig.Num == kv.config.Num {
 		return
 	}
+	DPrintf("gid:%d %d fetchNewConfigNum:%d",kv.gid,kv.me,newConfig.Num)
 	if kv.config.Num == 0 { //第一个配置,自己管自己就行
 		for shard, g := range newConfig.Shards {
 			if g == kv.gid {
@@ -286,6 +328,7 @@ func (kv *ShardKV) fetchNewConfig() {
 				}
 			}
 		}
+		kv.InstallConfig(newConfig)
 		return
 	}
 
@@ -346,13 +389,18 @@ func StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister,
 	// Use something like this to talk to the shardctrler:
 	kv.mck = shardctrler.MakeClerk(kv.ctrlers)
 
-
 	kv.applyCh = make(chan raft.ApplyMsg)
+
+	
 	kv.shardLastIndex = make(map[int]map[int64]uint32)
 	kv.kvMap = make(map[int]map[string]string)
+	kv.shardConfigNum = make(map[int]int)
 	kv.managedShards = make(map[int]bool)
-	kv.config = shardctrler.Config{}
-	kv.shardLastConfigNum = make(map[int]int)
+	kv.config = shardctrler.Config{
+		Num:    0,
+		Shards: [10]int{},
+		Groups: nil,
+	}
 
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 	kv.InstallSnapShot(persister.ReadSnapshot())
