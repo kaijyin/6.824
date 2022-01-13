@@ -22,6 +22,7 @@ const (
 	ErrWrongGroup  = "ErrWrongGroup"
 	ErrConfigToOld = "ErrConfigToOld"
 	ErrWrongLeader = "ErrWrongLeader"
+	ErrNotCurLeader = "ErrNotCurLeader"
 )
 
 type Err string

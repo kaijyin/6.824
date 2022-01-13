@@ -27,6 +27,7 @@ type KVServer struct {
 
 	chMap sync.Map
 	// Your definitions here.
+	curIndex    int
 	kvMap       map[string]string
 	ckLastIndex map[int64]uint32
 }
@@ -83,6 +84,7 @@ func (kv *KVServer) SnapShot(index int) {
 	}
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
+	e.Encode(kv.curIndex)
 	e.Encode(kv.kvMap)
 	e.Encode(kv.ckLastIndex)
 	//不开线程去执行snapshot,因为可能会导致多次执行,增加负担
@@ -96,6 +98,8 @@ func (kv *KVServer) InstallSnapShot(snapshot []byte) {
 	d := labgob.NewDecoder(r)
 	kv.kvMap = nil
 	kv.ckLastIndex = nil
+	kv.curIndex=0
+	d.Decode(&kv.curIndex)
 	d.Decode(&kv.kvMap)
 	d.Decode(&kv.ckLastIndex)
 }
@@ -104,7 +108,8 @@ func (kv *KVServer) doExecute() {
 		if kv.killed() {
 			return
 		}
-		if args.CommandValid { //序列化
+		if args.CommandValid &&kv.curIndex<args.CommandIndex{ //序列化
+			kv.curIndex=args.CommandIndex
 			op := args.Command.(Op)
 			ch, ok := kv.chMap.Load(op.Time)
 			reply := ExecuteReply{}

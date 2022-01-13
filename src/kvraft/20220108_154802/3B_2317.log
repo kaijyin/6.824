@@ -1,3 +1,0 @@
-# 6.824/kvraft [6.824/kvraft.test]
-.\server.go:89:19: kv.curIndex undefined (type *KVServer has no field or method curIndex)
-FAIL	6.824/kvraft [build failed]
