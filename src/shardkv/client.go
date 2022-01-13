@@ -68,6 +68,7 @@ func (ck *Clerk) execute(args *Args, reply *Reply) {
 	time.Sleep(time.Microsecond)
 	shard := args.Shard
 	for {
+		//DPrintf("send msg")
 		gid := ck.config.Shards[shard]
 		if servers, ok := ck.config.Groups[gid]; ok {
 			for si := 0; si < len(servers); si++ {
@@ -83,12 +84,13 @@ func (ck *Clerk) execute(args *Args, reply *Reply) {
 				}()
 				select {
 				case <-time.After(time.Millisecond * 300):
-				case *reply = <-ch:
-				}
-				if reply.Err == OK {
-					return
-				} else if reply.Err == ErrWrongGroup {
-					break
+				case rep:= <-ch:
+					if rep.Err == OK {
+						*reply=rep
+						return
+					} else if rep.Err == ErrWrongGroup {
+						break
+					}
 				}
 			}
 			ck.config = ck.sm.Query(-1)

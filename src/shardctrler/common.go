@@ -51,8 +51,11 @@ func (c *Config) Print()  {
 		DPrintf("index:%d  group:%d",i,g)
 	}
 	DPrintf("Groups:")
-	for g,_:=range c.Groups{
+	for g,names:=range c.Groups{
 		DPrintf("%d",g)
+		for _,name:=range names{
+			DPrintf(name)
+		}
 	}
 }
 const (
