@@ -37,7 +37,7 @@ func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
 		return
 	}
 	kv.clockMu.Lock()//每个请求通过时间戳唯一
-	time.Sleep(time.Microsecond)
+	time.Sleep(time.Nanosecond)
 	now := time.Now().UnixNano()
 	kv.clockMu.Unlock()
 	ch := make(chan ExecuteReply, 1)
@@ -108,7 +108,7 @@ func (kv *KVServer) doExecute() {
 		if kv.killed() {
 			return
 		}
-		if args.CommandValid &&kv.curIndex<args.CommandIndex{ //序列化
+		if args.CommandValid &&kv.curIndex+1==args.CommandIndex{ //一定序列化!
 			kv.curIndex=args.CommandIndex
 			op := args.Command.(Op)
 			ch, ok := kv.chMap.Load(op.Time)
@@ -124,6 +124,7 @@ func (kv *KVServer) doExecute() {
 					kv.kvMap[op.Key] += op.Value
 				}
 			}
+			//Gets请求单独处理,可以多次执行
 			if op.Type == Gets && ok && op.Server == kv.me {
 				reply.Value = kv.kvMap[op.Key]
 			}

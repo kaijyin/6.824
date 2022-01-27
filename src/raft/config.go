@@ -498,7 +498,7 @@ func (cfg *config) wait(index int, n int, startTerm int) interface{} {
 // times, in case a leader fails just after Start().
 // if retry==false, calls Start() only once, in order
 // to simplify the early Lab 2B tests.
-func (cfg *config) one(cmd interface{}, expectedServers int, retry bool) int {
+func (cfg *config)  one(cmd interface{}, expectedServers int, retry bool) int {
 	t0 := time.Now()
 	starts := 0
 	for time.Since(t0).Seconds() < 20 {

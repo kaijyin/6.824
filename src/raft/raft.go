@@ -395,7 +395,7 @@ func (rf *Raft) receiveAppendReplay(i int, leaderTerm int, reply *AppendReply) {
 		return
 	}
 	//收到高任期的reply
-	if reply.Term > rf.term { //可能是之前Flower集体拓机,之后新的Leader也拓机,Flower重新选举...总之一定要保持term一致
+	if reply.Term > rf.term{ //可能是之前Flower集体拓机,之后新的Leader也拓机,Flower重新选举...总之一定要保持term一致
 		rf.BeFlower(reply.Term)
 		return
 	}

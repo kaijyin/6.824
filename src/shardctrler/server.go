@@ -3,7 +3,6 @@ package shardctrler
 import (
 	"6.824/labgob"
 	"6.824/raft"
-	"sort"
 	"time"
 )
 import "6.824/labrpc"
@@ -21,15 +20,13 @@ type ShardCtrler struct {
 
 
 	chMap sync.Map
-	// Your definitions here.
-	curIndex    int
-	kvMap       map[string]string
 	ckLastIndex map[int64]uint32
 }
 
 type Op struct {
 	// Your data here.
 	Args
+	Config
 	Server int
 	Time   int64
 }
@@ -44,53 +41,39 @@ func (sc *ShardCtrler) unlock() {
 
 func (sc *ShardCtrler) Do(args *Args, reply *Reply) {
 	sc.lock()
-	//去除掉以及处理了的请求,对网络不可信的情况下很常见,必须,因为我读请求也只会执行一次,类似zookepper,
-	lastIdx := sc.ckLastIndex[args.CkId]
-	if lastIdx >= args.CkIndex {
-		reply.RequestApplied = true
-		if args.Type == Query {
-			queryArgs := args.Reqargs.(QueryArgs)
-			reply.Config = sc.query(queryArgs)
-		}
-		sc.unlock()
-		return
-	}
 	time.Sleep(time.Microsecond) //强制操作线性化
 	now := time.Now().UnixNano()
+	sc.unlock()
+	newConfig:=Config{}
+	if args.Type==Join{
+		newConfig=sc.join(args)
+	}else if args.Type==Leave{
+		newConfig=sc.leave(args)
+	}
 	ch := make(chan Reply, 1)
 	sc.chMap.Store(now, ch)
 	defer sc.chMap.Delete(now)
 	_, _, ok := sc.rf.Start(Op{
-		Args:   *args,
+		Args: *args,
+		Config: newConfig,
 		Server: sc.me,
 		Time:   now,
 	})
 	if !ok {
-		sc.unlock()
 		return
 	}
-	sc.unlock()
 	select {
-	case <-time.After(time.Second):
+	case <-time.After(time.Millisecond*300):
 	case *reply = <-ch: //do execute向chenel发送reply之后就删除id的映射
 	}
 }
 
-func (sc *ShardCtrler) join(args JoinArgs) {
-	preConfig := sc.configs[len(sc.configs)-1]
-	newConfig := preConfig.Copy()
+func (sc *ShardCtrler) join(args *Args)Config {
+	sc.lock()
+	newConfig := sc.configs[len(sc.configs)-1].Copy()
+	sc.unlock()
 	newConfig.Num++
-	gs:=Gset{}
-	for gid, sever := range args.Servers {
-		gs=append(gs,Gpair{
-			gid:     gid,
-			service: sever,
-		} )
-	}
-	sort.Sort(gs)
-	for _,g:=range gs{
-		gid:=g.gid
-		sever:=g.service
+	for gid,sever:=range args.Servers{
 		newConfig.Groups[gid] = make([]string, len(sever))
 		copy(newConfig.Groups[gid], sever)
 		if len(newConfig.Groups)== 1 { //唯一一组,特判
@@ -122,34 +105,20 @@ func (sc *ShardCtrler) join(args JoinArgs) {
 			}
 		}
 	}
-	sc.configs = append(sc.configs, newConfig)
+	return newConfig
 }
-func (sc *ShardCtrler) move(args MoveArgs) {
-	preConfig := sc.configs[len(sc.configs)-1]
-	newConfig := preConfig.Copy()
+func (sc *ShardCtrler) leave(args *Args)Config {
+	sc.lock()
+	newConfig := sc.configs[len(sc.configs)-1].Copy()
+	sc.unlock()
 	newConfig.Num++
-	newConfig.Shards[args.Shard]=args.GID
-	sc.configs=append(sc.configs,newConfig)
-}
-func (sc *ShardCtrler) leave(args LeaveArgs) {
-	preConfig := sc.configs[len(sc.configs)-1]
-	newConfig := Config{Num: len(sc.configs)}
-	newConfig.Groups = make(map[int][]string)
-	unusedGrps:=make(map[int]int)
-	for k, v := range preConfig.Groups {
-		newConfig.Groups[k] = make([]string, len(v))
-		copy(newConfig.Groups[k], v)
-		unusedGrps[k]++
+	unusedGrps:=make(map[int]bool)
+	for g, _ := range newConfig.Groups {
+		unusedGrps[g]=true
 	}
-	for i, g := range preConfig.Shards {
-		newConfig.Shards[i] = g
+	for _, g := range newConfig.Shards {
 		delete(unusedGrps,g)
 	}
-	gs:=[]int{}
-	for g:=range unusedGrps{
-		gs=append(gs,g)
-	}
-	sort.Ints(gs)
 	for _, gid := range args.GIDs {
 		delete(newConfig.Groups,gid)
 		if len(newConfig.Groups) == 0 { //唯一一组,特判
@@ -158,18 +127,16 @@ func (sc *ShardCtrler) leave(args LeaveArgs) {
 			}
 			continue
 		}
-		if unusedGrps[gid]!=0{//如果删除的gid并没有使用
+		if unusedGrps[gid]{//如果删除的group并没有使用
 			delete(unusedGrps,gid)
 			continue
 		}
-		if len(unusedGrps)>0{//还有空位
-			g:=gs[0]
-			gs=gs[1:]
-			for unusedGrps[g]==0{//不存在,说明被上一条件删除了
-				g=gs[0]
-				gs=gs[1:]
+		if len(unusedGrps)>0{//还有多余的group
+			g:=-1
+			for g=range unusedGrps{
+				break
 			}
-			for i,curg:=range newConfig.Shards{
+			for i,curg:=range newConfig.Shards{//用原本多出来的group去替换删除的group
 				if curg==gid{
 					newConfig.Shards[i]=g
 				}
@@ -205,14 +172,24 @@ func (sc *ShardCtrler) leave(args LeaveArgs) {
 			}
 		}
 	}
-	sc.configs = append(sc.configs, newConfig)
+	return newConfig
 }
 func (sc *ShardCtrler) query(args QueryArgs) (config Config) { //深拷贝
+	//DPrintf("cur max config num :%d",len(sc.configs)-1)
 	if args.Num == -1 || args.Num >= len(sc.configs) {
 		return sc.configs[len(sc.configs)-1].Copy()
 	} else {
 		return sc.configs[args.Num].Copy()
 	}
+}
+func (sc *ShardCtrler) installConfig(config *Config)bool{
+	sc.lock()
+	defer sc.unlock()
+	if config.Num!=len(sc.configs){
+		return false
+	}
+	sc.configs=append(sc.configs,config.Copy())
+	return true
 }
 
 //
@@ -228,40 +205,31 @@ func (sc *ShardCtrler) Kill() {
 }
 func (sc *ShardCtrler) doExecute() {
 	for args := range sc.applyCh {
-		sc.lock()
-		if args.CommandValid && sc.curIndex+1 == args.CommandIndex { //序列化
-			sc.curIndex = args.CommandIndex
+		if args.CommandValid{
 			op := args.Command.(Op)
 			ch, ok := sc.chMap.Load(op.Time)
 			reply := Reply{}
 			lastIndex := sc.ckLastIndex[op.CkId]
+			reply.RequestApplied = true
 			if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行
-				sc.ckLastIndex[op.CkId] = op.CkIndex
-				reply.RequestApplied = true
-				//DPrintf("%d execute CkId:%d index:%d",sc.me,op.CkId,op.CkIndex)
-				switch op.Type {
-				case Query:
-					if ok && op.Server == sc.me {
-						queryArgs := op.Reqargs.(QueryArgs)
-						reply.Config = sc.query(queryArgs)
-					}
-				case Join: //是否需要改为值传递
-					joinArgs := op.Reqargs.(JoinArgs)
-					sc.join(joinArgs)
-				case Move:
-					moveArgs := op.Reqargs.(MoveArgs)
-					sc.move(moveArgs)
-				case Leave:
-					leaveArgs := op.Reqargs.(LeaveArgs)
-					sc.leave(leaveArgs)
+				if op.Type==Join||op.Type==Leave{
+					//DPrintf("query install!")
+                     if sc.installConfig(&op.Config){
+                     	 sc.ckLastIndex[op.CkId]=op.CkIndex
+					 }else{
+					 	reply.RequestApplied=false
+					 }
+				}else{
+					sc.ckLastIndex[op.CkId]=op.CkIndex
 				}
 			}
-			//可能kv index之前的并没有被实际执行,而是直接安装snapshot,所以还是需要把等待的请求给去除掉
+			if op.Type==Query&&	ok && op.Server == sc.me {
+			    reply.Config = sc.query(op.QueryArgs)
+			}
 			if ok && sc.me == op.Server {
 				ch.(chan Reply) <- reply
 			}
 		}
-		sc.unlock()
 	}
 }
 
@@ -281,7 +249,6 @@ StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister) *Sha
 	sc := new(ShardCtrler)
 	sc.me = me
 
-	sc.kvMap = make(map[string]string)
 	sc.ckLastIndex = make(map[int64]uint32)
 
 	sc.configs = make([]Config, 1)
@@ -290,7 +257,6 @@ StartServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persister) *Sha
 	labgob.Register(Op{})
 	labgob.Register(Reply{})
 	labgob.Register(QueryArgs{})
-	labgob.Register(MoveArgs{})
 	labgob.Register(LeaveArgs{})
 	labgob.Register(JoinArgs{})
 	sc.applyCh = make(chan raft.ApplyMsg)

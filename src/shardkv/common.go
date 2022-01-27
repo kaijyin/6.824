@@ -15,17 +15,17 @@ import (
 //
 
 const (
-	OK             = "OK"
-	ErrTimeOut     =  "ErrTimeOut"
-	ErrNoData      =  "ErrNoData"
-	ErrNoKey       = "ErrNoKey"
-	ErrWrongGroup  = "ErrWrongGroup"
-	ErrConfigToOld = "ErrConfigToOld"
-	ErrWrongLeader = "ErrWrongLeader"
-	ErrNotCurLeader = "ErrNotCurLeader"
+	OK             = 1
+	ErrTimeOut     =  2
+	ErrNoData      =  3
+	ErrNoKey       = 4
+	ErrWrongGroup  = 5
+	ErrConfigToOld = 6
+	ErrWrongLeader = 7
+	ErrNotCurLeader = 8
 )
 
-type Err string
+type Err int
 
 const (
 	Gets    = 1
@@ -35,8 +35,6 @@ const (
 	DeleteShard = 5
 	InstallShard = 6
 	InstallConfig = 7
-)
-const (
 )
 
 type Args struct {

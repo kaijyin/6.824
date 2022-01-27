@@ -10,6 +10,7 @@ package shardkv
 
 import (
 	"6.824/labrpc"
+	"sync"
 )
 import "crypto/rand"
 import "math/big"
@@ -38,6 +39,7 @@ func nrand() int64 {
 }
 
 type Clerk struct {
+	shardMu  [shardctrler.NShards]sync.Mutex
 	sm       *shardctrler.Clerk
 	config   shardctrler.Config
 	make_end func(string) *labrpc.ClientEnd
@@ -68,13 +70,14 @@ func (ck *Clerk) execute(args *Args, reply *Reply) {
 	time.Sleep(time.Microsecond)
 	shard := args.Shard
 	for {
-		//DPrintf("send msg")
+		//DPrintf("%d send argType:%d in shard:%d ", ck.me,args.Type,shard)
 		gid := ck.config.Shards[shard]
 		if servers, ok := ck.config.Groups[gid]; ok {
 			for si := 0; si < len(servers); si++ {
 				srv := ck.make_end(servers[si])
 				ch := make(chan Reply, 1)
-				arg:=args.Copy()
+				arg := args.Copy()
+				//DPrintf("send arg:%d to %s", args.Type, servers[si])
 				go func() {
 					reply := Reply{}
 					ok := srv.Call("ShardKV.Do", &arg, &reply)
@@ -84,9 +87,9 @@ func (ck *Clerk) execute(args *Args, reply *Reply) {
 				}()
 				select {
 				case <-time.After(time.Millisecond * 300):
-				case rep:= <-ch:
+				case rep := <-ch:
 					if rep.Err == OK {
-						*reply=rep
+						*reply = rep
 						return
 					} else if rep.Err == ErrWrongGroup {
 						break
@@ -102,6 +105,8 @@ func (ck *Clerk) execute(args *Args, reply *Reply) {
 }
 func (ck *Clerk) Get(key string) string {
 	shard := key2shard(key)
+	ck.shardMu[shard].Lock()
+	defer ck.shardMu[shard].Unlock()
 	ck.lastShardIndex[shard]++
 	args := Args{
 		Shard:          shard,
@@ -117,8 +122,11 @@ func (ck *Clerk) Get(key string) string {
 }
 func (ck *Clerk) Put(key string, value string) {
 	shard := key2shard(key)
+	ck.shardMu[shard].Lock()
+	defer ck.shardMu[shard].Unlock()
 	ck.lastShardIndex[shard]++
-	args := Args{Shard: shard,
+	args := Args{
+		Shard:          shard,
 		RequestInvalid: true,
 		Type:           Puts,
 		Key:            key,
@@ -131,8 +139,11 @@ func (ck *Clerk) Put(key string, value string) {
 }
 func (ck *Clerk) Append(key string, value string) {
 	shard := key2shard(key)
+	ck.shardMu[shard].Lock()
+	defer ck.shardMu[shard].Unlock()
 	ck.lastShardIndex[shard]++
-	args := Args{Shard: shard,
+	args := Args{
+		Shard:          shard,
 		RequestInvalid: true,
 		Type:           Appends,
 		Key:            key,

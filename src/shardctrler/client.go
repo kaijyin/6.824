@@ -41,6 +41,8 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 }
 
 func (ck *Clerk) Query(num int) Config {
+	ck.mu.Lock()
+	defer ck.mu.Unlock()
 	ck.index++
 	args := QueryArgs{Num: num}
 	// Your code here.
@@ -49,48 +51,45 @@ func (ck *Clerk) Query(num int) Config {
 		CkId: ck.me,
 		CkIndex: ck.index,
 		Type:    Query,
-		Reqargs: args,
+		QueryArgs: args,
 	},reply)
 	return reply.Config
 }
 
 func (ck *Clerk) Join(servers map[int][]string) {
+	ck.mu.Lock()
+	defer ck.mu.Unlock()
 	ck.index++
 	args := JoinArgs{Servers: servers}
 	ck.Execute(&Args{
 		CkId: ck.me,
 		CkIndex: ck.index,
         Type:    Join,
-		Reqargs: args,
+		JoinArgs: args,
 	},&Reply{})
 }
 
 func (ck *Clerk) Leave(gids []int) {
+	ck.mu.Lock()
+	defer ck.mu.Unlock()
 	ck.index++
 	args := LeaveArgs{GIDs: gids}
 	ck.Execute(&Args{
 		CkId: ck.me,
 		CkIndex: ck.index,
 		Type:    Leave,
-		Reqargs: args,
+		LeaveArgs: args,
 	},&Reply{})
 }
 
-func (ck *Clerk) Move(shard int, gid int) {
-	ck.index++
-	args := MoveArgs{Shard: shard,GID: gid}
-	ck.Execute(&Args{
-		CkId: ck.me,
-		CkIndex: ck.index,
-		Type:    Move,
-		Reqargs: args,
-	},&Reply{})
-}
 func (ck *Clerk) Execute(args *Args,reply *Reply){
 	time.Sleep(time.Microsecond)
 	for server:=atomic.LoadInt64(&ck.lastLeader);;server=(server+1)%ck.total{
 		ch:=make(chan Reply,1)
-		arg:=*args//每个请求都独立
+		arg:=args.Copy() //每个请求都独立
+		//if arg.Type!=Query{
+		//	DPrintf("%d send argType:%d index:%d",ck.me,arg.Type,arg.CkIndex)
+		//}
 		go func(i int64) {
 			reply:=Reply{}
 			ok:=ck.servers[i].Call("ShardCtrler.Do", &arg, &reply)

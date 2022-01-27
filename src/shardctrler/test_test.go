@@ -135,50 +135,6 @@ func TestBasic(t *testing.T) {
 
 	fmt.Printf("  ... Passed\n")
 
-	fmt.Printf("Test: Move ...\n")
-	{
-		var gid3 int = 503
-		ck.Join(map[int][]string{gid3: []string{"3a", "3b", "3c"}})
-		var gid4 int = 504
-		ck.Join(map[int][]string{gid4: []string{"4a", "4b", "4c"}})
-		for i := 0; i < NShards; i++ {
-			cf := ck.Query(-1)
-			if i < NShards/2 {
-				ck.Move(i, gid3)
-				if cf.Shards[i] != gid3 {
-					cf1 := ck.Query(-1)
-					if cf1.Num <= cf.Num {
-						t.Fatalf("Move should increase Config.Num")
-					}
-				}
-			} else {
-				ck.Move(i, gid4)
-				if cf.Shards[i] != gid4 {
-					cf1 := ck.Query(-1)
-					if cf1.Num <= cf.Num {
-						t.Fatalf("Move should increase Config.Num")
-					}
-				}
-			}
-		}
-		cf2 := ck.Query(-1)
-		for i := 0; i < NShards; i++ {
-			if i < NShards/2 {
-				if cf2.Shards[i] != gid3 {
-					t.Fatalf("expected shard %v on gid %v actually %v",
-						i, gid3, cf2.Shards[i])
-				}
-			} else {
-				if cf2.Shards[i] != gid4 {
-					t.Fatalf("expected shard %v on gid %v actually %v",
-						i, gid4, cf2.Shards[i])
-				}
-			}
-		}
-		ck.Leave([]int{gid3})
-		ck.Leave([]int{gid4})
-	}
-	fmt.Printf("  ... Passed\n")
 
 	fmt.Printf("Test: Concurrent leave/join ...\n")
 

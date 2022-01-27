@@ -68,31 +68,31 @@ const (
 	Query =4
 )
 
-type Gpair struct {
-	gid int
-	service []string
-}
-
-type Gset []Gpair
-
-func (g Gset) Len() int {
-	return len(g)
-}
-func (g Gset) Less(i, j int) bool {
-	return g[i].gid<g[j].gid
-}
-func (g Gset) Swap(i, j int) {
-	g[i], g[j] = g[j], g[i]
-}
 
 type Args struct {
 	CkId    int64
 	CkIndex uint32
 	Type    int
-	Reqargs interface{}
+	JoinArgs
+	LeaveArgs
+	QueryArgs
 }
 
-
+func (a Args) Copy() Args {
+	args:=a
+	if a.Type==Join{
+		args.Servers=make(map[int][]string)
+		for g,server:=range a.Servers{
+			args.Servers[g]=make([]string,len(server))
+			copy(args.Servers[g],server)
+		}
+	}
+	if a.Type==Leave{
+		args.GIDs=make([]int,len(a.GIDs))
+		copy(args.GIDs,a.GIDs)
+	}
+	return args
+}
 type JoinArgs struct {
 	Servers map[int][]string // new GID -> servers mappings
 }
@@ -101,10 +101,6 @@ type LeaveArgs struct {
 	GIDs []int
 }
 
-type MoveArgs struct {
-	Shard int
-	GID   int
-}
 
 type QueryArgs struct {
 	Num int // desired config number

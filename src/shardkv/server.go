@@ -68,7 +68,7 @@ func (kv *ShardKV) Do(args *Args, reply *Reply) {
 		return
 	}
 	select {
-	case <-time.After(time.Millisecond * 500):
+	case <-time.After(time.Millisecond * 300):
 		reply.Err = ErrTimeOut
 	case *reply = <-ch: //do execute向chanel发送reply之后就删除id的映射
 	}
@@ -115,18 +115,20 @@ func (kv *ShardKV) InstallSnapShot(snapshot []byte) {
 	d.Decode(&kv.managedShards)
 	d.Decode(&kv.config)
 }
-func (kv *ShardKV) getShardData(shard int) []byte {
+func (kv *ShardKV) fetchShard(shard int) []byte {
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
 	e.Encode(kv.kvMap[shard])
 	e.Encode(kv.shardLastIndex[shard])
 	e.Encode(kv.shardConfigNum[shard])
+	delete(kv.managedShards,shard) //别人获取后自己不再管理,实际数据等待delete命令到来再删除
+	//DPrintf("%d %d fetch shard:%d shardlenth:%d",kv.gid,kv.me,shard,len(w.Bytes()))
 	return w.Bytes()
 }
 
 //数据已经确定转移,清空该shard的所有数据
 func (kv *ShardKV) deleteShard(shard int) {
-	//DPrintf("gid:%d %d delete shard %d",kv.gid,kv.me,shard)
+	//DPrintf("%d %d delete shard %d",kv.gid,kv.me,shard)
 	delete(kv.kvMap, shard)
 	delete(kv.shardLastIndex, shard)
 	delete(kv.shardConfigNum, shard)
@@ -134,6 +136,7 @@ func (kv *ShardKV) deleteShard(shard int) {
 
 //安装该shard的数据,config num在确认config的时候才更改
 func (kv *ShardKV) installShard(shard int, shardData []byte) {
+	//DPrintf("%d %d install shard:%d shardlength:%d",kv.gid,kv.me,shard,len(shardData))
 	//安装后立即开启该shard的服务,必须保证每个shard只安装一次
 	kv.managedShards[shard]=true
 	if shardData == nil || len(shardData) < 1 {
@@ -175,61 +178,62 @@ func (kv *ShardKV) doExecute() {
 		if kv.killed() {
 			return
 		}
-		if args.CommandValid&&kv.curIndex<args.CommandIndex{ //保证所有日志只顺序执行一次(可能已经安装了日志,但是还有些旧日志正在提交)
-			kv.curIndex=args.CommandIndex
+		if args.CommandValid{
 			op := args.Command.(Op)
 			shard := op.Shard
 			ch, ok := kv.shardChMap[shard].Load(op.Time)
 			reply := Reply{}
-			reply.Err=OK
-			//本地group的请求
-			if op.InstallInvalid {
-				if op.Type == InstallShard &&op.ConfigNum==kv.config.Num&&kv.kvMap[shard]==nil{//只安装一次,因为后面获取到的可能是空的
-					kv.installShard(shard, op.ShardData)
-				} else if op.Type == InstallConfig&&op.Config.Num>kv.config.Num{
-					kv.installConfig(op.Config)
+			if kv.curIndex+1==args.CommandIndex { //保证所有日志只顺序执行一次(可能已经安装了日志,但是还有些旧日志正在提交)
+				kv.curIndex = args.CommandIndex
+				reply.Err = OK
+				//本地group的请求
+				if op.InstallInvalid {
+					if op.Type == InstallShard && op.ConfigNum == kv.config.Num && kv.kvMap[shard] == nil { //只安装一次,因为后面获取到的可能是空的
+						kv.installShard(shard, op.ShardData)
+					} else if op.Type == InstallConfig && op.Config.Num==kv.config.Num+1{
+						kv.installConfig(op.Config)
+					}
 				}
-			}
 
-			//其余group的请求
-			if op.RemoteInvalid {
-				if op.ConfigNum > kv.config.Num { //当前配置没跟上,返回等待跟上配置
-					reply.Err = ErrConfigToOld
-					go kv.fetchNewConfig()
-				} else {
-					if kv.shardConfigNum[shard] == op.ConfigNum {//shard数据存在,并且是该num下的请求
-						if op.Type == FetchShard{
-							reply.ShardData = kv.getShardData(shard)
-							delete(kv.managedShards, shard) //别人获取后自己不再管理,可以多次删除
-						} else if op.Type == DeleteShard { //删除实际的数据,在配置没有确认前可以重复删除
-							kv.deleteShard(shard)
+				//其余group的请求
+				if op.RemoteInvalid {
+					if op.ConfigNum > kv.config.Num { //当前配置没跟上,返回等待跟上配置
+						reply.Err = ErrConfigToOld
+						go kv.fetchNewConfig()
+					} else {
+						if kv.shardConfigNum[shard] == op.ConfigNum { //shard数据存在,并且是该num下的请求
+							if op.Type == FetchShard {
+								reply.ShardData=kv.fetchShard(shard)
+							} else if op.Type == DeleteShard { //删除实际的数据
+								kv.deleteShard(shard)
+							}
 						}
 					}
 				}
-			}
-			//客户端k-v请求
-			if op.RequestInvalid {
-				if !kv.managedShards[shard] { //不再管理该分区
-					reply.Err = ErrWrongGroup
-				} else {
-					lastMap := kv.shardLastIndex[shard] //引用传递,直接用
-					lastIndex := lastMap[op.CkId]
-					if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行
-						lastMap[op.CkId] = op.CkIndex //map是引用传递,可以直接用
-						if op.Type == Puts {
-							kv.kvMap[shard][op.Key] = op.Value
-						} else if op.Type == Appends {
-							kv.kvMap[shard][op.Key] += op.Value
+				//客户端k-v请求
+				if op.RequestInvalid {
+					if !kv.managedShards[shard] { //不再管理该分区
+						reply.Err = ErrWrongGroup
+					} else {
+						lastMap := kv.shardLastIndex[shard] //引用传递,直接用
+						lastIndex := lastMap[op.CkId]
+						if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行
+							lastMap[op.CkId] = op.CkIndex //map是引用传递,可以直接用
+							if op.Type == Puts {
+								kv.kvMap[shard][op.Key] = op.Value
+							} else if op.Type == Appends {
+								kv.kvMap[shard][op.Key] += op.Value
+							}
+						}
+						if op.Type == Gets && ok && op.Server == kv.me {
+							reply.Value = kv.kvMap[shard][op.Key]
 						}
 					}
-					if op.Type == Gets && ok && op.Server == kv.me {
-						reply.Value = kv.kvMap[shard][op.Key]
-					}
 				}
-			}
-			//达到最大日志大小,进行日志压缩
-			if kv.maxraftstate != -1 && kv.rf.GetRaftStateSize() >= kv.maxraftstate {
-				kv.SnapShot(args.CommandIndex)
+				//达到最大日志大小,进行日志压缩
+				if kv.maxraftstate != -1 && kv.rf.GetRaftStateSize() >= kv.maxraftstate {
+					kv.SnapShot(args.CommandIndex)
+				}
 			}
 			if ok && kv.me == op.Server {
 				ch.(chan Reply) <- reply
@@ -336,6 +340,7 @@ func (kv *ShardKV) fetchNewConfig() {
 	kv.configmu.Unlock()
 	//每个group必须把config从0开始一个一个的全部走一遍
 	newConfig := kv.mck.Query(curConfig.Num + 1)
+	//DPrintf("query config num:%d",curConfig.Num)
 	if newConfig.Num == curConfig.Num {
 		return
 	}

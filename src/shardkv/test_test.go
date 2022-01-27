@@ -561,6 +561,7 @@ func TestUnreliable1(t *testing.T) {
 	cfg.join(0)
 	cfg.leave(1)
 
+
 	for ii := 0; ii < n*2; ii++ {
 		i := ii % n
 		check(t, ck, ka[i], va[i])
@@ -604,7 +605,6 @@ func TestUnreliable2(t *testing.T) {
 	for i := 0; i < n; i++ {
 		go ff(i)
 	}
-
 	time.Sleep(150 * time.Millisecond)
 	cfg.join(1)
 	time.Sleep(500 * time.Millisecond)
@@ -618,7 +618,6 @@ func TestUnreliable2(t *testing.T) {
 	cfg.join(0)
 
 	time.Sleep(2 * time.Second)
-
 	atomic.StoreInt32(&done, 1)
 	cfg.net.Reliable(true)
 	for i := 0; i < n; i++ {
@@ -630,8 +629,9 @@ func TestUnreliable2(t *testing.T) {
 	}
 
 	fmt.Printf("  ... Passed\n")
+	time.Sleep(time.Second*2)
 }
-
+//
 func TestUnreliable3(t *testing.T) {
 	fmt.Printf("Test: unreliable 3...\n")
 
@@ -735,12 +735,13 @@ func TestUnreliable3(t *testing.T) {
 	}
 
 	fmt.Printf("  ... Passed\n")
+	time.Sleep(time.Second*2)
 }
+
 //
-////
-//// optional test to see whether servers are deleting
-//// shards for which they are no longer responsible.
-////
+// optional test to see whether servers are deleting
+// shards for which they are no longer responsible.
+//
 func TestChallenge1Delete(t *testing.T) {
 	fmt.Printf("Test: shard deletion (challenge 1) ...\n")
 
@@ -820,6 +821,7 @@ func TestChallenge1Delete(t *testing.T) {
 	}
 
 	fmt.Printf("  ... Passed\n")
+	time.Sleep(time.Second*2)
 }
 //
 ////
@@ -890,6 +892,7 @@ func TestChallenge2Unaffected(t *testing.T) {
 	}
 
 	fmt.Printf("  ... Passed\n")
+	time.Sleep(time.Second*2)
 }
 ////
 //////
