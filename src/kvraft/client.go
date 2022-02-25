@@ -3,7 +3,6 @@ package kvraft
 import (
 	"6.824/labrpc"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 import "crypto/rand"
@@ -15,8 +14,8 @@ type Clerk struct {
 	me    int64
 	index uint32
 
-	total      int64
-	lastLeader int64
+	total      int
+	lastLeader int
 	mu         sync.Mutex
 	// You will have to modify this struct.
 }
@@ -31,16 +30,15 @@ func nrand() int64 {
 func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
-	ck.total = int64(len(ck.servers))
+	ck.total = len(ck.servers)
 	// You'll have to add code here.
 	ck.me = nrand()
 	return ck
 }
 func (ck *Clerk) Execute(args *RequestArgs, reply *ExecuteReply) {
-	time.Sleep(time.Microsecond)
-	for server := atomic.LoadInt64(&ck.lastLeader); ; server = (server + 1) % ck.total {
+	for server := ck.lastLeader; ; server = (server + 1) % ck.total {
 		ch := make(chan ExecuteReply, 1)
-		go func(i int64, req RequestArgs) {
+		go func(i int, req RequestArgs) {
 			reply := ExecuteReply{}
 			ok := ck.servers[i].Call("KVServer.Do", &req, &reply)
 			if ok {
@@ -51,29 +49,45 @@ func (ck *Clerk) Execute(args *RequestArgs, reply *ExecuteReply) {
 		case <-time.After(time.Millisecond * 500):
 		case *reply = <-ch:
 			if reply.RequestApplied {
-				atomic.StoreInt64(&ck.lastLeader, server)
+				ck.lastLeader=server
 				return
 			}
 		}
 	}
 }
+//Get可以重复执行,更新操作执行顺序又客户端决定
 func (ck *Clerk) Get(key string) string {
-	ck.mu.Lock()
-	defer ck.mu.Unlock()
-	ck.index++
-	args := RequestArgs{
-		Type:    Gets,
-		Key:     key,
-		CkId:    ck.me,
-		CkIndex: ck.index,
+	syncReply := ExecuteReply{}
+	ck.Execute(&RequestArgs{
+		Type:    Sync,
+	}, &syncReply)
+	getReply:=GetsReply{}
+	for server := 0; ; server = (server + 1) % ck.total {//从第一个从节点开始请求
+		if server==ck.lastLeader{
+			continue
+		}
+		ch := make(chan GetsReply, 1)
+		go func(i int, req GetRequestArgs) {
+			reply := GetsReply{}
+			ok := ck.servers[i].Call("KVServer.Get", &req, &reply)
+			if ok {
+				ch <- reply
+			}
+		}(server, GetRequestArgs{
+			SynIndex: syncReply.SyncIndex,
+			Key:      key,
+		})
+		select {
+		case <-time.After(time.Millisecond * 300):
+		case getReply= <-ch:
+		}
+		if getReply.RequestApplied {
+			break
+		}
 	}
-	reply := ExecuteReply{}
-	ck.Execute(&args, &reply)
-	return reply.Value
+	return getReply.Value
 }
 func (ck *Clerk) Put(key string, value string) {
-	ck.mu.Lock()
-	defer ck.mu.Unlock()
 	ck.index++
 	args := RequestArgs{
 		Type:    Puts,
@@ -86,8 +100,6 @@ func (ck *Clerk) Put(key string, value string) {
 	ck.Execute(&args, &reply)
 }
 func (ck *Clerk) Append(key string, value string) {
-	ck.mu.Lock()
-	defer ck.mu.Unlock()
 	ck.index++
 	args := RequestArgs{
 		Type:    Appends,

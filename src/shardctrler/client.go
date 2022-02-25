@@ -87,9 +87,6 @@ func (ck *Clerk) Execute(args *Args,reply *Reply){
 	for server:=atomic.LoadInt64(&ck.lastLeader);;server=(server+1)%ck.total{
 		ch:=make(chan Reply,1)
 		arg:=args.Copy() //每个请求都独立
-		//if arg.Type!=Query{
-		//	DPrintf("%d send argType:%d index:%d",ck.me,arg.Type,arg.CkIndex)
-		//}
 		go func(i int64) {
 			reply:=Reply{}
 			ok:=ck.servers[i].Call("ShardCtrler.Do", &arg, &reply)

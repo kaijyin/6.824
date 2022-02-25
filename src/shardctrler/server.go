@@ -175,7 +175,6 @@ func (sc *ShardCtrler) leave(args *Args)Config {
 	return newConfig
 }
 func (sc *ShardCtrler) query(args QueryArgs) (config Config) { //深拷贝
-	//DPrintf("cur max config num :%d",len(sc.configs)-1)
 	if args.Num == -1 || args.Num >= len(sc.configs) {
 		return sc.configs[len(sc.configs)-1].Copy()
 	} else {
@@ -213,7 +212,6 @@ func (sc *ShardCtrler) doExecute() {
 			reply.RequestApplied = true
 			if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行
 				if op.Type==Join||op.Type==Leave{
-					//DPrintf("query install!")
                      if sc.installConfig(&op.Config){
                      	 sc.ckLastIndex[op.CkId]=op.CkIndex
 					 }else{

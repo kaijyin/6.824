@@ -17,7 +17,8 @@ type Op struct {
 }
 
 type KVServer struct {
-	clockMu      sync.Mutex
+	mu sync.Mutex
+	clockmu sync.Mutex
 	me      int
 	rf      *raft.Raft
 	applyCh chan raft.ApplyMsg
@@ -27,19 +28,31 @@ type KVServer struct {
 
 	chMap sync.Map
 	// Your definitions here.
-	curIndex    int
-	kvMap       map[string]string
-	ckLastIndex map[int64]uint32
+	executeIndex int
+	kvMap        map[string]string
+	ckLastIndex  map[int64]uint32
 }
 
+//读写分离
+func (kv *KVServer) Get(args *GetRequestArgs, reply *GetsReply){
+	if kv.killed() {
+		return
+	}
+	kv.mu.Lock()
+	if !kv.rf.IsLeader()&&kv.executeIndex>=args.SynIndex{//从节点处理读请求,而且保证sync
+		reply.RequestApplied=true
+		reply.Value=kv.kvMap[args.Key]
+	}
+	kv.mu.Unlock()
+}
 func (kv *KVServer) Do(args *RequestArgs, reply *ExecuteReply) {
 	if kv.killed() {
 		return
 	}
-	kv.clockMu.Lock()//每个请求通过时间戳唯一
+	kv.clockmu.Lock() //每个写请求通过时间戳唯一
 	time.Sleep(time.Nanosecond)
 	now := time.Now().UnixNano()
-	kv.clockMu.Unlock()
+	kv.clockmu.Unlock()
 	ch := make(chan ExecuteReply, 1)
 	kv.chMap.Store(now, ch)
 	defer kv.chMap.Delete(now)
@@ -84,7 +97,7 @@ func (kv *KVServer) SnapShot(index int) {
 	}
 	w := new(bytes.Buffer)
 	e := labgob.NewEncoder(w)
-	e.Encode(kv.curIndex)
+	e.Encode(kv.executeIndex)
 	e.Encode(kv.kvMap)
 	e.Encode(kv.ckLastIndex)
 	//不开线程去执行snapshot,因为可能会导致多次执行,增加负担
@@ -98,8 +111,8 @@ func (kv *KVServer) InstallSnapShot(snapshot []byte) {
 	d := labgob.NewDecoder(r)
 	kv.kvMap = nil
 	kv.ckLastIndex = nil
-	kv.curIndex=0
-	d.Decode(&kv.curIndex)
+	kv.executeIndex =0
+	d.Decode(&kv.executeIndex)
 	d.Decode(&kv.kvMap)
 	d.Decode(&kv.ckLastIndex)
 }
@@ -108,15 +121,16 @@ func (kv *KVServer) doExecute() {
 		if kv.killed() {
 			return
 		}
-		if args.CommandValid &&kv.curIndex+1==args.CommandIndex{ //一定序列化!
-			kv.curIndex=args.CommandIndex
+		kv.mu.Lock()
+		if args.CommandValid&&args.CommandIndex==kv.executeIndex+1{ //一定序列化!
+			kv.executeIndex=args.CommandIndex
 			op := args.Command.(Op)
 			ch, ok := kv.chMap.Load(op.Time)
 			reply := ExecuteReply{}
 			ck := op.CkId
 			lastIndex := kv.ckLastIndex[op.CkId]
 			reply.RequestApplied=true
-			if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行
+			if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行,冥等请求
 				kv.ckLastIndex[ck] = op.CkIndex
                if op.Type == Puts {
 					kv.kvMap[op.Key] = op.Value
@@ -124,9 +138,9 @@ func (kv *KVServer) doExecute() {
 					kv.kvMap[op.Key] += op.Value
 				}
 			}
-			//Gets请求单独处理,可以多次执行
-			if op.Type == Gets && ok && op.Server == kv.me {
-				reply.Value = kv.kvMap[op.Key]
+			kv.executeIndex=args.CommandIndex//执行后再更改,避免读请求失效
+			if op.Type==Sync{
+				reply.SyncIndex=kv.executeIndex
 			}
 			if kv.maxraftstate != -1 && kv.rf.GetRaftStateSize() >= kv.maxraftstate {
 				kv.SnapShot(args.CommandIndex)
@@ -139,6 +153,7 @@ func (kv *KVServer) doExecute() {
 			// 必须先安装日志,再改具体的kv存储
 			kv.InstallSnapShot(args.Snapshot)
 		}
+		kv.mu.Unlock()
 	}
 }
 
@@ -162,6 +177,8 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	labgob.Register(Op{})
 	labgob.Register(RequestArgs{})
 	labgob.Register(ExecuteReply{})
+	labgob.Register(GetsReply{})
+	labgob.Register(GetRequestArgs{})
 
 	kv := new(KVServer)
 	kv.me = me

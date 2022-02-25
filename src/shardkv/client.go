@@ -67,17 +67,15 @@ func MakeClerk(ctrlers []*labrpc.ClientEnd, make_end func(string) *labrpc.Client
 	return ck
 }
 func (ck *Clerk) execute(args *Args, reply *Reply) {
-	time.Sleep(time.Microsecond)
+	time.Sleep(time.Microsecond)//避免执行太快,导致测试线性化失败
 	shard := args.Shard
 	for {
-		//DPrintf("%d send argType:%d in shard:%d ", ck.me,args.Type,shard)
 		gid := ck.config.Shards[shard]
 		if servers, ok := ck.config.Groups[gid]; ok {
 			for si := 0; si < len(servers); si++ {
 				srv := ck.make_end(servers[si])
 				ch := make(chan Reply, 1)
 				arg := args.Copy()
-				//DPrintf("send arg:%d to %s", args.Type, servers[si])
 				go func() {
 					reply := Reply{}
 					ok := srv.Call("ShardKV.Do", &arg, &reply)

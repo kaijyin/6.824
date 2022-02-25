@@ -122,13 +122,11 @@ func (kv *ShardKV) fetchShard(shard int) []byte {
 	e.Encode(kv.shardLastIndex[shard])
 	e.Encode(kv.shardConfigNum[shard])
 	delete(kv.managedShards,shard) //别人获取后自己不再管理,实际数据等待delete命令到来再删除
-	//DPrintf("%d %d fetch shard:%d shardlenth:%d",kv.gid,kv.me,shard,len(w.Bytes()))
 	return w.Bytes()
 }
 
 //数据已经确定转移,清空该shard的所有数据
 func (kv *ShardKV) deleteShard(shard int) {
-	//DPrintf("%d %d delete shard %d",kv.gid,kv.me,shard)
 	delete(kv.kvMap, shard)
 	delete(kv.shardLastIndex, shard)
 	delete(kv.shardConfigNum, shard)
@@ -136,7 +134,6 @@ func (kv *ShardKV) deleteShard(shard int) {
 
 //安装该shard的数据,config num在确认config的时候才更改
 func (kv *ShardKV) installShard(shard int, shardData []byte) {
-	//DPrintf("%d %d install shard:%d shardlength:%d",kv.gid,kv.me,shard,len(shardData))
 	//安装后立即开启该shard的服务,必须保证每个shard只安装一次
 	kv.managedShards[shard]=true
 	if shardData == nil || len(shardData) < 1 {
@@ -163,8 +160,6 @@ func (kv *ShardKV) installShard(shard int, shardData []byte) {
 func (kv *ShardKV) installConfig(config shardctrler.Config) {
 	kv.configmu.Lock()//与config配置线程可能冲突
 	kv.config = config.Copy()
-	//DPrintf("gid:%d %d install config num:%d",kv.gid,kv.me,config.Num)
-	//kv.config.Print()
 	kv.configmu.Unlock()
 	for sd, g := range kv.config.Shards {
 		if g == kv.gid {
@@ -217,7 +212,7 @@ func (kv *ShardKV) doExecute() {
 					} else {
 						lastMap := kv.shardLastIndex[shard] //引用传递,直接用
 						lastIndex := lastMap[op.CkId]
-						if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行
+						if lastIndex+1 == op.CkIndex { //避免同一客户端重复提交多次执行,冥等请求
 							lastMap[op.CkId] = op.CkIndex //map是引用传递,可以直接用
 							if op.Type == Puts {
 								kv.kvMap[shard][op.Key] = op.Value
@@ -340,11 +335,9 @@ func (kv *ShardKV) fetchNewConfig() {
 	kv.configmu.Unlock()
 	//每个group必须把config从0开始一个一个的全部走一遍
 	newConfig := kv.mck.Query(curConfig.Num + 1)
-	//DPrintf("query config num:%d",curConfig.Num)
 	if newConfig.Num == curConfig.Num {
 		return
 	}
-	//DPrintf("gid:%d %d fetch new fonfig in num:%d",kv.gid,kv.me,newConfig.Num)
 	if curConfig.Num == 0 { //第一个配置特判,自己管自己就行
 		for shard, g := range newConfig.Shards {
 			if g == kv.gid {

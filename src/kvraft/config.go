@@ -103,7 +103,7 @@ func (cfg *config) SnapshotSize() int {
 }
 
 // attach server i to servers listed in to
-// caller must hold cfg.mu
+// caller must hold cfg.clockmu
 func (cfg *config) connectUnlocked(i int, to []int) {
 	// log.Printf("connect peer %d to %v\n", i, to)
 
@@ -127,7 +127,7 @@ func (cfg *config) connect(i int, to []int) {
 }
 
 // detach server i from the servers listed in from
-// caller must hold cfg.mu
+// caller must hold cfg.clockmu
 func (cfg *config) disconnectUnlocked(i int, from []int) {
 	// log.Printf("disconnect peer %d from %v\n", i, from)
 
@@ -219,7 +219,7 @@ func (cfg *config) deleteClient(ck *Clerk) {
 	delete(cfg.clerks, ck)
 }
 
-// caller should hold cfg.mu
+// caller should hold cfg.clockmu
 func (cfg *config) ConnectClientUnlocked(ck *Clerk, to []int) {
 	// log.Printf("ConnectClient %v to %v\n", ck, to)
 	endnames := cfg.clerks[ck]
@@ -235,7 +235,7 @@ func (cfg *config) ConnectClient(ck *Clerk, to []int) {
 	cfg.ConnectClientUnlocked(ck, to)
 }
 
-// caller should hold cfg.mu
+// caller should hold cfg.clockmu
 func (cfg *config) DisconnectClientUnlocked(ck *Clerk, from []int) {
 	// log.Printf("DisconnectClient %v from %v\n", ck, from)
 	endnames := cfg.clerks[ck]
